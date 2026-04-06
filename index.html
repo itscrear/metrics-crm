@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Content CRM — ItsCrear</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface2: #1e1e1e;
+  --surface3: #262626;
+  --border: #2a2a2a;
+  --accent: #7c5cfc;
+  --accent2: #a78bfa;
+  --green: #22c55e;
+  --orange: #f97316;
+  --red: #ef4444;
+  --yellow: #eab308;
+  --text: #f0f0f0;
+  --muted: #777;
+  --muted2: #444;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+a { color: inherit; text-decoration: none; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── UTILS ── */
+.hidden { display: none !important; }
+.flex { display: flex; }
+.flex-col { display: flex; flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.gap-20 { gap: 20px; }
+.muted { color: var(--muted); }
+.small { font-size: 0.8rem; }
+.bold { font-weight: 700; }
+
+/* ── BADGE ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 600; white-space: nowrap;
+}
+.badge-purple { background: rgba(124,92,252,.2); color: var(--accent2); }
+.badge-orange { background: rgba(249,115,22,.2); color: var(--orange); }
+.badge-green  { background: rgba(34,197,94,.15); color: var(--green); }
+.badge-yellow { background: rgba(234,179,8,.15); color: var(--yellow); }
+.badge-red    { background: rgba(239,68,68,.15); color: var(--red); }
+.badge-muted  { background: var(--surface3); color: var(--muted); }
+.badge-admin  { background: rgba(124,92,252,.25); color: var(--accent2); }
+.badge-editor { background: var(--surface3); color: var(--muted); }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 18px; border-radius: var(--radius-sm);
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+  border: none; transition: all .15s; white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #6b4de6; }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface3); }
+.btn-danger { background: rgba(239,68,68,.15); color: var(--red); border: 1px solid rgba(239,68,68,.2); }
+.btn-danger:hover { background: rgba(239,68,68,.25); }
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--surface2); color: var(--text); }
+.btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+.btn-icon { padding: 8px; border-radius: var(--radius-sm); }
+.btn:disabled { opacity: .4; pointer-events: none; }
+
+/* ── INPUTS ── */
+.input, .select, textarea {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius-sm);
+  padding: 10px 14px; font-size: 0.88rem; width: 100%;
+  transition: border-color .15s; font-family: inherit;
+}
+.input:focus, .select:focus, textarea:focus {
+  outline: none; border-color: var(--accent);
+}
+.select option { background: var(--surface2); }
+label { font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; display: block; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:600px) { .form-row { grid-template-columns: 1fr; } }
+
+/* ── CARD ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.75);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 20px; backdrop-filter: blur(4px);
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 28px;
+  width: 100%; max-width: 520px; max-height: 90vh;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+}
+.modal-wide { max-width: 700px; }
+.modal h2 { font-size: 1.1rem; font-weight: 700; }
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+
+/* ── TOAST ── */
+#toast-container {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+}
+.toast {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 18px;
+  font-size: 0.85rem; animation: slideIn .2s ease;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast-success { border-color: var(--green); }
+.toast-error   { border-color: var(--red); }
+.toast-info    { border-color: var(--accent); }
+@keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ── SPINNER ── */
+.spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  animation: spin .6s linear infinite; display: inline-block;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ────────────────────────────────────────────
+   LOGIN SCREEN
+──────────────────────────────────────────── */
+#login-screen {
+  min-height: 100vh; display: flex;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.login-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 40px 36px;
+  width: 100%; max-width: 400px; display: flex;
+  flex-direction: column; gap: 22px;
+}
+.login-logo { text-align: center; }
+.login-logo h1 { font-size: 1.5rem; font-weight: 800; }
+.login-logo p { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+.login-card .btn-primary { width: 100%; justify-content: center; padding: 12px; font-size: 0.95rem; }
+
+/* ────────────────────────────────────────────
+   APP SHELL (sidebar + main)
+──────────────────────────────────────────── */
+#app { display: none; min-height: 100vh; }
+
+/* Topbar */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 56px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; z-index: 100;
+}
+.topbar-brand { font-weight: 800; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
+.topbar-brand span { color: var(--accent2); }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.user-chip {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.82rem; color: var(--muted);
+}
+.user-avatar {
+  width: 30px; height: 30px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+
+/* Main content */
+.main-content {
+  margin-top: 56px; padding: 28px 24px;
+  max-width: 1200px; margin-left: auto; margin-right: auto;
+  margin-top: 56px;
+}
+
+/* ────────────────────────────────────────────
+   ALERTS BAR
+──────────────────────────────────────────── */
+.alerts-bar {
+  background: rgba(234,179,8,.08); border: 1px solid rgba(234,179,8,.2);
+  border-radius: var(--radius); padding: 14px 18px;
+  margin-bottom: 24px; display: flex; flex-direction: column; gap: 8px;
+}
+.alerts-bar-title {
+  font-size: 0.8rem; font-weight: 700;
+  color: var(--yellow); text-transform: uppercase; letter-spacing: .06em;
+  display: flex; align-items: center; gap: 6px;
+}
+.alert-item {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 0.83rem; color: var(--text); gap: 12px;
+  padding: 6px 0; border-top: 1px solid rgba(234,179,8,.1);
+}
+.alert-item:first-of-type { border-top: none; }
+.alert-client { font-weight: 600; }
+.alert-detail { color: var(--muted); font-size: 0.78rem; }
+
+/* ────────────────────────────────────────────
+   DASHBOARD — CLIENTS GRID
+──────────────────────────────────────────── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 22px; flex-wrap: wrap; gap: 12px;
+}
+.page-header h1 { font-size: 1.3rem; font-weight: 700; }
+
+.clients-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+.client-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+  cursor: pointer; transition: border-color .15s, transform .1s;
+  position: relative; overflow: hidden;
+}
+.client-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.client-card-accent {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.client-card-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.client-logo {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.client-card-info h3 { font-size: 0.95rem; font-weight: 700; }
+.client-card-info p { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+.client-kpis {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px; margin-top: 12px;
+}
+.client-kpi { text-align: center; }
+.client-kpi-val { font-size: 1rem; font-weight: 700; }
+.client-kpi-label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.client-card-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border);
+  font-size: 0.75rem; color: var(--muted);
+}
+
+/* ────────────────────────────────────────────
+   CLIENT DETAIL PAGE
+──────────────────────────────────────────── */
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.82rem; color: var(--muted); cursor: pointer;
+  margin-bottom: 20px; transition: color .15s;
+  background: none; border: none;
+}
+.back-btn:hover { color: var(--text); }
+
+.client-detail-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  margin-bottom: 28px; flex-wrap: wrap;
+}
+.client-detail-logo {
+  width: 60px; height: 60px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.client-detail-info h1 { font-size: 1.4rem; font-weight: 800; }
+.client-detail-info p { font-size: 0.85rem; color: var(--muted); margin-top: 3px; }
+.client-detail-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.tab {
+  padding: 10px 18px; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent;
+  transition: all .15s; background: none; border-top: none; border-left: none; border-right: none;
+  margin-bottom: -1px;
+}
+.tab.active { color: var(--text); border-bottom-color: var(--accent); }
+.tab:hover { color: var(--text); }
+
+/* Section title */
+.section-title {
+  font-size: 0.78rem; font-weight: 700; color: var(--accent2);
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* KPI row */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 16px 14px;
+}
+.kpi-label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.kpi-value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+.kpi-sub { font-size: 0.7rem; color: var(--muted); margin-top: 3px; }
+.kpi-delta { font-size: 0.72rem; font-weight: 600; margin-top: 4px; }
+.kpi-delta.up { color: var(--green); }
+.kpi-delta.down { color: var(--red); }
+
+/* Chart card */
+.chart-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+}
+.chart-card h4 { font-size: 0.82rem; color: var(--muted); margin-bottom: 16px; }
+.chart-wrap { position: relative; height: 200px; }
+
+/* ────────────────────────────────────────────
+   HISTORY TABLE
+──────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+th {
+  background: var(--surface2); color: var(--muted);
+  font-weight: 600; text-align: left; padding: 9px 13px;
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: .05em;
+  border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+td { padding: 10px 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.link-out { color: var(--accent2); font-size: 0.8rem; }
+.link-out:hover { text-decoration: underline; }
+
+/* ────────────────────────────────────────────
+   STARS SECTION
+──────────────────────────────────────────── */
+.stars-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+.star-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  position: relative; transition: border-color .15s;
+}
+.star-card.is-star { border-color: var(--yellow); }
+.star-badge-icon {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 1rem; cursor: pointer;
+  transition: transform .15s;
+}
+.star-badge-icon:hover { transform: scale(1.3); }
+.star-card-label {
+  font-size: 0.68rem; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 6px;
+}
+.star-card-name { font-size: 0.88rem; font-weight: 600; margin-bottom: 10px; }
+.star-card-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.star-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.star-metric { text-align: center; background: var(--surface2); border-radius: 6px; padding: 6px 4px; }
+.star-metric-val { font-size: 0.88rem; font-weight: 700; }
+.star-metric-label { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; }
+.star-note-input {
+  margin-top: 10px; font-size: 0.78rem; padding: 7px 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text); width: 100%;
+  font-family: inherit; resize: none;
+}
+
+/* ────────────────────────────────────────────
+   UPLOAD ZONE
+──────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius);
+  padding: 28px 20px; text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.upload-zone:hover { border-color: var(--accent); background: var(--surface2); }
+.upload-zone.loaded { border-color: var(--green); border-style: solid; }
+.upload-zone input { display: none; }
+.upload-zone .uz-icon { font-size: 1.8rem; margin-bottom: 8px; }
+.upload-zone h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; }
+.upload-zone p { font-size: 0.78rem; color: var(--muted); }
+.upload-zone .uz-file { font-size: 0.78rem; color: var(--green); margin-top: 6px; font-weight: 600; }
+
+/* ────────────────────────────────────────────
+   PERIOD SELECTOR
+──────────────────────────────────────────── */
+.period-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.period-chip {
+  padding: 5px 14px; border-radius: 20px; font-size: 0.78rem;
+  font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--muted); transition: all .15s;
+}
+.period-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.period-chip:hover { border-color: var(--accent2); color: var(--text); }
+
+/* ────────────────────────────────────────────
+   PATTERNS BLOCKS (reutilizado)
+──────────────────────────────────────────── */
+.patterns-grid-2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.pattern-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+.pattern-block-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 14px; }
+.pattern-rows { display: flex; flex-direction: column; gap: 9px; }
+.pattern-row { display: grid; grid-template-columns: 1fr 100px 56px; align-items: center; gap: 8px; }
+.pattern-row-label { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.pattern-row-name { font-size: 0.82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pattern-row-name.best { color: var(--text); font-weight: 600; }
+.pattern-row-count { font-size: 0.68rem; color: var(--muted2); }
+.pattern-bar-wrap { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.pattern-bar { height: 100%; border-radius: 3px; }
+.pattern-row-val { font-size: 0.78rem; font-weight: 600; text-align: right; white-space: nowrap; }
+
+/* ────────────────────────────────────────────
+   EMPTY STATES
+──────────────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 48px 20px;
+  color: var(--muted); font-size: 0.88rem;
+}
+.empty-state .es-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty-state h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+
+/* ────────────────────────────────────────────
+   PRINT / PDF
+──────────────────────────────────────────── */
+@media print {
+  body { background: #fff; color: #111; }
+  .topbar, .back-btn, .btn, .tabs, .period-chips, #toast-container,
+  .modal-overlay, .alerts-bar, .client-detail-actions { display: none !important; }
+  .main-content { margin: 0; padding: 20px; max-width: 100%; }
+  #page-dashboard, #page-client .tab-content:not(.active) { display: none !important; }
+  .card, .chart-card, .star-card, .kpi-card, .pattern-block {
+    break-inside: avoid; border: 1px solid #ddd !important; background: #fff !important;
+  }
+  .kpi-value, .client-kpi-val { color: #111 !important; }
+  .muted, .kpi-label, .kpi-sub, .section-title { color: #555 !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════
+     LOGIN SCREEN
+══════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <h1>✦ ItsCrear</h1>
+      <p>Content CRM — Acceso del equipo</p>
+    </div>
+    <div class="flex-col gap-12">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" class="input" placeholder="tu@email.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-password" class="input" placeholder="••••••••" autocomplete="current-password">
+      </div>
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Ingresar</button>
+    <p id="login-error" class="small muted" style="text-align:center;color:var(--red)"></p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APP
+══════════════════════════════════════ -->
+<div id="app">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">✦ <span>ItsCrear</span> Content CRM</div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar" id="topbar-avatar">?</div>
+        <span id="topbar-email"></span>
+        <span id="topbar-role-badge"></span>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- ── PAGE: DASHBOARD ── -->
+    <div id="page-dashboard">
+
+      <!-- Alerts -->
+      <div id="alerts-bar" class="alerts-bar hidden"></div>
+
+      <!-- Header -->
+      <div class="page-header">
+        <h1>Clientes</h1>
+        <div class="flex gap-8" id="dashboard-actions">
+          <button class="btn btn-primary" id="btn-add-client" onclick="openAddClient()">+ Nuevo cliente</button>
+        </div>
+      </div>
+
+      <!-- Clients grid -->
+      <div id="clients-grid" class="clients-grid">
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="es-icon">👥</div>
+          <h3>Cargando clientes…</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PAGE: CLIENT DETAIL ── -->
+    <div id="page-client" class="hidden">
+
+      <button class="back-btn" onclick="showDashboard()">← Volver a clientes</button>
+
+      <!-- Client header -->
+      <div class="client-detail-header">
+        <div class="client-detail-logo" id="cd-logo">?</div>
+        <div class="client-detail-info">
+          <h1 id="cd-name"></h1>
+          <p id="cd-meta"></p>
+        </div>
+        <div class="client-detail-actions">
+          <button class="btn btn-primary btn-sm" onclick="openUploadMetrics()">📥 Cargar métricas</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportClientPDF()">📄 Exportar PDF</button>
+          <button class="btn btn-secondary btn-sm" id="btn-edit-client" onclick="openEditClient()">✏️ Editar</button>
+          <button class="btn btn-danger btn-sm admin-only" id="btn-delete-client" onclick="confirmDeleteClient()">🗑 Eliminar</button>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('overview')">Resumen</button>
+        <button class="tab" onclick="switchTab('history')">Historial de períodos</button>
+        <button class="tab" onclick="switchTab('posts')">Publicaciones</button>
+        <button class="tab" onclick="switchTab('stars')">⭐ Estrellas</button>
+      </div>
+
+      <!-- TAB: OVERVIEW -->
+      <div id="tab-overview" class="tab-content">
+        <div id="cd-period-selector" class="period-chips"></div>
+
+        <div class="section-title">KPIs del período</div>
+        <div class="kpi-row" id="cd-kpis"></div>
+
+        <div class="chart-card">
+          <h4>Evolución mensual — Alcance</h4>
+          <div class="chart-wrap"><canvas id="chart-reach"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h4>Evolución mensual — Visualizaciones</h4>
+          <div class="chart-wrap"><canvas id="chart-views"></canvas></div>
+        </div>
+
+        <div class="section-title">Análisis de guiones</div>
+        <div class="patterns-grid-2" id="cd-patterns"></div>
+      </div>
+
+      <!-- TAB: HISTORY -->
+      <div id="tab-history" class="tab-content hidden">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Período</th>
+                <th>Posts</th>
+                <th>Alcance</th>
+                <th>Views</th>
+                <th>Likes</th>
+                <th>Guardados</th>
+                <th>Seguidores</th>
+                <th>Eng. %</th>
+                <th>Cargado por</th>
+                <th class="admin-only">⚙</th>
+              </tr>
+            </thead>
+            <tbody id="history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: POSTS -->
+      <div id="tab-posts" class="tab-content hidden">
+        <div id="cd-period-selector-posts" class="period-chips"></div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Guión</th>
+                <th>Tipo</th>
+                <th>Pilar</th>
+                <th>Ángulo</th>
+                <th>Alcance</th>
+                <th>Views</th>
+                <th>Likes</th>
+                <th>Guardados</th>
+                <th>Eng. %</th>
+                <th>⭐</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody id="posts-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: STARS -->
+      <div id="tab-stars" class="tab-content hidden">
+        <div class="section-title">Top 3 de todos los tiempos</div>
+        <div class="stars-grid" id="stars-alltime"></div>
+
+        <div class="section-title" style="margin-top:24px">Top post por período</div>
+        <div class="stars-grid" id="stars-byperiod"></div>
+
+        <div class="section-title" style="margin-top:24px">Marcados manualmente ⭐</div>
+        <div class="stars-grid" id="stars-manual"></div>
+      </div>
+
+    </div><!-- /page-client -->
+
+  </div><!-- /main-content -->
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════
+     MODALS
+══════════════════════════════════════ -->
+
+<!-- ADD / EDIT CLIENT -->
+<div id="modal-client" class="modal-overlay hidden">
+  <div class="modal">
+    <h2 id="modal-client-title">Nuevo cliente</h2>
+    <div class="flex-col gap-12">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre del cliente *</label>
+          <input type="text" id="f-name" class="input" placeholder="Mateo Quaintenne">
+        </div>
+        <div class="form-group">
+          <label>@usuario de Instagram *</label>
+          <input type="text" id="f-username" class="input" placeholder="mateoquaintenne">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fecha de inicio *</label>
+          <input type="date" id="f-start" class="input">
+        </div>
+        <div class="form-group">
+          <label>Piezas por mes *</label>
+          <select id="f-pieces" class="select">
+            <option value="15">15 piezas — reporte mensual</option>
+            <option value="20">20 piezas — reporte mensual</option>
+            <option value="30">30 piezas — reporte quincenal</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Redes que manejamos</label>
+        <div class="flex gap-8" style="flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.83rem;color:var(--text)">
+            <input type="checkbox" id="net-ig" value="Instagram" checked> Instagram
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.83rem;color:var(--text)">
+            <input type="checkbox" id="net-tt" value="TikTok"> TikTok
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.83rem;color:var(--text)">
+            <input type="checkbox" id="net-yt" value="YouTube"> YouTube
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.83rem;color:var(--text)">
+            <input type="checkbox" id="net-li" value="LinkedIn"> LinkedIn
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Color de marca</label>
+        <div class="flex gap-8 items-center">
+          <input type="color" id="f-color" value="#7c5cfc" style="width:40px;height:36px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer">
+          <span class="small muted">Se usa en el dashboard y en el PDF del cliente</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notas internas</label>
+        <textarea id="f-notes" class="input" rows="2" placeholder="Info adicional del cliente…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-client')">Cancelar</button>
+      <button class="btn btn-primary" id="save-client-btn" onclick="saveClient()">Guardar cliente</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPLOAD METRICS -->
+<div id="modal-upload" class="modal-overlay hidden">
+  <div class="modal modal-wide">
+    <h2>Cargar métricas</h2>
+    <p class="small muted" id="upload-client-info"></p>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Período *</label>
+        <input type="text" id="up-label" class="input" placeholder="Marzo 2026">
+      </div>
+      <div class="form-group">
+        <label>Fecha inicio del período *</label>
+        <input type="date" id="up-start" class="input">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Fecha fin del período *</label>
+        <input type="date" id="up-end" class="input">
+      </div>
+      <div class="form-group" id="up-half-group">
+        <label>Quincena</label>
+        <select id="up-half" class="select">
+          <option value="">— N/A (mensual) —</option>
+          <option value="1">Primera quincena</option>
+          <option value="2">Segunda quincena</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="upload-zone" id="uz-meta" onclick="document.getElementById('file-meta').click()">
+        <input type="file" id="file-meta" accept=".csv">
+        <div class="uz-icon">📈</div>
+        <h4>CSV de Meta</h4>
+        <p>Exportación de Meta Business Suite</p>
+        <div class="uz-file" id="uz-meta-name"></div>
+      </div>
+      <div class="upload-zone" id="uz-notion" onclick="document.getElementById('file-notion').click()">
+        <input type="file" id="file-notion" accept=".csv">
+        <div class="uz-icon">📝</div>
+        <h4>CSV de Notion</h4>
+        <p>Base de datos de guiones exportada</p>
+        <div class="uz-file" id="uz-notion-name"></div>
+      </div>
+    </div>
+
+    <div id="upload-preview" class="hidden">
+      <div class="section-title">Preview — posts detectados</div>
+      <div id="upload-preview-content"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-upload')">Cancelar</button>
+      <button class="btn btn-primary" id="upload-save-btn" onclick="saveMetrics()" disabled>
+        Guardar métricas
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div id="modal-confirm" class="modal-overlay hidden">
+  <div class="modal" style="max-width:380px">
+    <h2 id="confirm-title">¿Estás segura?</h2>
+    <p class="small muted" id="confirm-msg"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONFIG SUPABASE
+// ════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://qpvgvzjgcwosjwnblydz.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwdmd2empnY3dvc2p3bmJseWR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNjI3NDIsImV4cCI6MjA4OTYzODc0Mn0.bBqUQV9OqF5-OwDyc_5agn3MMkYjUpWXa_i7hKaR5kY';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════
+let currentUser = null;
+let currentProfile = null;
+let currentClient = null;
+let currentPeriodId = null;
+let currentPeriodIdPosts = null;
+let allPeriods = [];
+let allPosts = [];
+let parsedMetaData = null;
+let parsedNotionData = null;
+let editingClientId = null;
+let charts = {};
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+async function init() {
+  const { data: { session } } = await db.auth.getSession();
+  if (session) {
+    await onLogin(session.user);
+  }
+  db.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'SIGNED_IN') await onLogin(session.user);
+    if (event === 'SIGNED_OUT') onLogout();
+  });
+}
+
+async function onLogin(user) {
+  currentUser = user;
+  const { data: profile } = await db.from('profiles').select('*').eq('id', user.id).single();
+  currentProfile = profile;
+
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').style.display = 'block';
+
+  const initials = (user.email || '?')[0].toUpperCase();
+  document.getElementById('topbar-avatar').textContent = initials;
+  document.getElementById('topbar-email').textContent = user.email;
+  const roleEl = document.getElementById('topbar-role-badge');
+  const isAdmin = profile?.role === 'admin';
+  roleEl.innerHTML = `<span class="badge ${isAdmin ? 'badge-admin' : 'badge-editor'}">${isAdmin ? 'Admin' : 'Editor'}</span>`;
+
+  // Show/hide admin-only elements
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+  if (!isAdmin) document.getElementById('btn-add-client').style.display = 'none';
+
+  showDashboard();
+}
+
+function onLogout() {
+  currentUser = null;
+  currentProfile = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+// ════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pwd   = document.getElementById('login-password').value;
+  const btn   = document.getElementById('login-btn');
+  const err   = document.getElementById('login-error');
+  err.textContent = '';
+  btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true;
+
+  const { error } = await db.auth.signInWithPassword({ email, password: pwd });
+  if (error) {
+    err.textContent = 'Email o contraseña incorrectos.';
+    btn.innerHTML = 'Ingresar';
+    btn.disabled = false;
+  }
+}
+
+async function doLogout() {
+  await db.auth.signOut();
+}
+
+// ════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════
+async function showDashboard() {
+  document.getElementById('page-dashboard').classList.remove('hidden');
+  document.getElementById('page-client').classList.add('hidden');
+  currentClient = null;
+  await loadClients();
+}
+
+async function loadClients() {
+  const grid = document.getElementById('clients-grid');
+  grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="spinner"></div></div>`;
+
+  const { data: clients, error } = await db.from('clients')
+    .select('*').eq('active', true).order('created_at');
+
+  if (error || !clients) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>Error cargando clientes</h3></div>`;
+    return;
+  }
+
+  // Load latest period for each client
+  const clientIds = clients.map(c => c.id);
+  let latestPeriods = {};
+  if (clientIds.length > 0) {
+    const { data: periods } = await db.from('metric_periods')
+      .select('*').in('client_id', clientIds).order('period_end', { ascending: false });
+    if (periods) {
+      periods.forEach(p => {
+        if (!latestPeriods[p.client_id]) latestPeriods[p.client_id] = p;
+      });
+    }
+  }
+
+  // Build alerts
+  buildAlerts(clients, latestPeriods);
+
+  if (clients.length === 0) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="es-icon">👥</div>
+      <h3>Sin clientes aún</h3>
+      <p>Agregá tu primer cliente para comenzar</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = clients.map(c => {
+    const lp = latestPeriods[c.id];
+    const initials = c.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const pieces = c.pieces_per_month;
+    const freq = pieces === 30 ? 'Quincenal' : 'Mensual';
+    const freqBadge = pieces === 30 ? 'badge-orange' : 'badge-purple';
+    return `
+    <div class="client-card" onclick="showClientDetail('${c.id}')">
+      <div class="client-card-accent" style="background:${c.color}"></div>
+      <div class="client-card-top">
+        <div class="client-logo" style="background:${c.color}">${initials}</div>
+        <div class="client-card-info">
+          <h3>${c.name}</h3>
+          <p>@${c.username || '—'} · ${(c.networks||[]).join(', ')}</p>
+        </div>
+      </div>
+      ${lp ? `
+      <div class="client-kpis">
+        <div class="client-kpi">
+          <div class="client-kpi-val">${fmtNum(lp.total_reach)}</div>
+          <div class="client-kpi-label">Alcance</div>
+        </div>
+        <div class="client-kpi">
+          <div class="client-kpi-val">${fmtNum(lp.total_views)}</div>
+          <div class="client-kpi-label">Views</div>
+        </div>
+        <div class="client-kpi">
+          <div class="client-kpi-val">${lp.avg_engagement}%</div>
+          <div class="client-kpi-label">Eng.</div>
+        </div>
+      </div>
+      <div class="small muted" style="margin-top:8px">Último período: ${lp.period_label}</div>
+      ` : `<div class="small muted" style="margin-top:12px">Sin métricas cargadas aún</div>`}
+      <div class="client-card-footer">
+        <span>${pieces} piezas/mes</span>
+        <span class="badge ${freqBadge}">${freq}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════
+// ALERTS
+// ════════════════════════════════════════════════
+function buildAlerts(clients, latestPeriods) {
+  const bar = document.getElementById('alerts-bar');
+  const alerts = [];
+  const now = new Date();
+
+  clients.forEach(c => {
+    const lp = latestPeriods[c.id];
+    const startDate = new Date(c.start_date);
+    const isQuincenal = c.pieces_per_month === 30;
+
+    if (isQuincenal) {
+      // Check both halves of current month
+      const mid = new Date(now.getFullYear(), now.getMonth(), 16);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth()+1, 0);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      if (now >= mid && startDate <= monthStart) {
+        // Check if first half loaded
+        const hasFirst = lp && lp.half === 1 &&
+          new Date(lp.period_start).getMonth() === now.getMonth() &&
+          new Date(lp.period_start).getFullYear() === now.getFullYear();
+        if (!hasFirst) {
+          alerts.push({ client: c, msg: `Falta cargar 1ª quincena de ${monthName(now)}` });
+        }
+      }
+      if (now >= monthEnd && startDate <= monthStart) {
+        const hasSecond = lp && lp.half === 2 &&
+          new Date(lp.period_start).getMonth() === now.getMonth() &&
+          new Date(lp.period_start).getFullYear() === now.getFullYear();
+        if (!hasSecond) {
+          alerts.push({ client: c, msg: `Falta cargar 2ª quincena de ${monthName(now)}` });
+        }
+      }
+    } else {
+      // Monthly — check if current month loaded (after the 1st)
+      if (now.getDate() >= 2) {
+        const prevMonth = new Date(now.getFullYear(), now.getMonth()-1, 1);
+        if (startDate <= prevMonth) {
+          const hasPrev = lp && new Date(lp.period_end).getMonth() === prevMonth.getMonth() &&
+            new Date(lp.period_end).getFullYear() === prevMonth.getFullYear();
+          if (!hasPrev) {
+            alerts.push({ client: c, msg: `Faltan métricas de ${monthName(prevMonth)}` });
+          }
+        }
+      }
+    }
+  });
+
+  if (alerts.length === 0) { bar.classList.add('hidden'); return; }
+
+  bar.classList.remove('hidden');
+  bar.innerHTML = `<div class="alerts-bar-title">⚠️ Métricas pendientes (${alerts.length})</div>` +
+    alerts.map(a => `
+      <div class="alert-item">
+        <div>
+          <span class="alert-client">${a.client.name}</span>
+          <span class="alert-detail"> — ${a.msg}</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="showClientDetail('${a.client.id}');openUploadMetrics()">Cargar</button>
+      </div>`).join('');
+}
+
+function monthName(d) {
+  return d.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' });
+}
+
+// ════════════════════════════════════════════════
+// CLIENT DETAIL
+// ════════════════════════════════════════════════
+async function showClientDetail(clientId) {
+  document.getElementById('page-dashboard').classList.add('hidden');
+  document.getElementById('page-client').classList.remove('hidden');
+  switchTab('overview');
+
+  const { data: client } = await db.from('clients').select('*').eq('id', clientId).single();
+  currentClient = client;
+
+  const initials = client.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('cd-logo').textContent = initials;
+  document.getElementById('cd-logo').style.background = client.color;
+  document.getElementById('cd-name').textContent = client.name;
+  document.getElementById('cd-meta').textContent =
+    `@${client.username || '—'} · ${(client.networks||[]).join(', ')} · ${client.pieces_per_month} piezas/mes · Inicio: ${formatDate(client.start_date)}`;
+
+  const isAdmin = currentProfile?.role === 'admin';
+  document.getElementById('btn-delete-client').style.display = isAdmin ? '' : 'none';
+  document.getElementById('btn-edit-client').style.display = isAdmin ? '' : 'none';
+
+  await loadClientData(clientId);
+}
+
+async function loadClientData(clientId) {
+  // Load periods
+  const { data: periods } = await db.from('metric_periods')
+    .select('*').eq('client_id', clientId).order('period_start', { ascending: true });
+  allPeriods = periods || [];
+
+  // Load all posts
+  const { data: posts } = await db.from('posts')
+    .select('*').eq('client_id', clientId).order('pub_date', { ascending: true });
+  allPosts = posts || [];
+
+  // Period selectors
+  buildPeriodSelector();
+  buildHistoryTable();
+  buildStars();
+
+  // Select last period
+  if (allPeriods.length > 0) {
+    selectPeriod(allPeriods[allPeriods.length - 1].id);
+    selectPeriodPosts(allPeriods[allPeriods.length - 1].id);
+  } else {
+    document.getElementById('cd-kpis').innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>Sin métricas cargadas</h3></div>`;
+  }
+  buildEvolutionCharts();
+}
+
+function buildPeriodSelector() {
+  const html = allPeriods.map(p =>
+    `<div class="period-chip" data-pid="${p.id}" onclick="selectPeriod('${p.id}')">${p.period_label}</div>`
+  ).join('');
+  document.getElementById('cd-period-selector').innerHTML = html || '<span class="small muted">Sin períodos cargados</span>';
+  document.getElementById('cd-period-selector-posts').innerHTML = html || '<span class="small muted">Sin períodos cargados</span>';
+}
+
+function selectPeriod(periodId) {
+  currentPeriodId = periodId;
+  document.querySelectorAll('#cd-period-selector .period-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.pid === periodId);
+  });
+  const period = allPeriods.find(p => p.id === periodId);
+  if (period) buildOverview(period);
+}
+
+function selectPeriodPosts(periodId) {
+  currentPeriodIdPosts = periodId;
+  document.querySelectorAll('#cd-period-selector-posts .period-chip').forEach(el => {
+    el.classList.toggle('active', el.dataset.pid === periodId);
+  });
+  buildPostsTable(periodId);
+}
+
+function buildOverview(period) {
+  // KPIs
+  const prevPeriod = allPeriods[allPeriods.indexOf(period) - 1];
+  const kpis = [
+    { label: 'Posts',       value: period.total_posts,    prev: prevPeriod?.total_posts,    fmt: v => v },
+    { label: 'Alcance',     value: period.total_reach,    prev: prevPeriod?.total_reach,    fmt: fmtNum },
+    { label: 'Views',       value: period.total_views,    prev: prevPeriod?.total_views,    fmt: fmtNum },
+    { label: 'Likes',       value: period.total_likes,    prev: prevPeriod?.total_likes,    fmt: fmtNum },
+    { label: 'Comentarios', value: period.total_comments, prev: prevPeriod?.total_comments, fmt: fmtNum },
+    { label: 'Guardados',   value: period.total_saves,    prev: prevPeriod?.total_saves,    fmt: fmtNum },
+    { label: 'Seguidores',  value: period.total_follows,  prev: prevPeriod?.total_follows,  fmt: fmtNum },
+    { label: 'Eng. prom.',  value: period.avg_engagement, prev: prevPeriod?.avg_engagement, fmt: v => v + '%' },
+  ];
+
+  document.getElementById('cd-kpis').innerHTML = kpis.map(k => {
+    const delta = k.prev != null && k.prev > 0
+      ? Math.round(((k.value - k.prev) / k.prev) * 100) : null;
+    const deltaHtml = delta != null
+      ? `<div class="kpi-delta ${delta >= 0 ? 'up' : 'down'}">${delta >= 0 ? '▲' : '▼'} ${Math.abs(delta)}% vs anterior</div>`
+      : '';
+    return `<div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.fmt(k.value || 0)}</div>
+      ${deltaHtml}
+    </div>`;
+  }).join('');
+
+  // Patterns from posts of this period
+  const posts = allPosts.filter(p => p.period_id === period.id);
+  buildPatterns(posts, 'cd-patterns');
+}
+
+function buildPostsTable(periodId) {
+  const posts = allPosts.filter(p => p.period_id === periodId);
+  if (posts.length === 0) {
+    document.getElementById('posts-tbody').innerHTML =
+      `<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:24px">Sin publicaciones en este período</td></tr>`;
+    return;
+  }
+  document.getElementById('posts-tbody').innerHTML = posts.map(p => {
+    const typeLabel = p.post_type?.includes('Reel') ? 'Reel' : 'Carrusel';
+    const typeBadge = p.post_type?.includes('Reel') ? 'badge-purple' : 'badge-orange';
+    const pilarBadge = p.pilar?.toLowerCase().includes('autor') ? 'badge-green' : 'badge-muted';
+    return `<tr>
+      <td style="white-space:nowrap;color:var(--muted)">${formatDate(p.pub_date)}</td>
+      <td title="${p.script_name||p.description||''}">${truncate(p.script_name||p.description||'—',40)}</td>
+      <td><span class="badge ${typeBadge}">${typeLabel}</span></td>
+      <td><span class="badge ${pilarBadge}">${p.pilar||'—'}</span></td>
+      <td style="color:var(--muted);font-size:0.78rem">${p.angulo||'—'}</td>
+      <td><strong>${fmtNum(p.reach)}</strong></td>
+      <td>${fmtNum(p.views)}</td>
+      <td>${fmtNum(p.likes)}</td>
+      <td>${fmtNum(p.saves)}</td>
+      <td>${p.engagement}%</td>
+      <td>
+        <span class="star-badge-icon" onclick="toggleStar('${p.id}', ${!p.is_star})" title="${p.is_star?'Quitar estrella':'Marcar como estrella'}">
+          ${p.is_star ? '⭐' : '☆'}
+        </span>
+      </td>
+      <td>${p.link ? `<a href="${p.link}" target="_blank" class="link-out">↗</a>` : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function buildHistoryTable() {
+  if (allPeriods.length === 0) {
+    document.getElementById('history-tbody').innerHTML =
+      `<tr><td colspan="10" style="text-align:center;color:var(--muted);padding:24px">Sin períodos cargados</td></tr>`;
+    return;
+  }
+  const isAdmin = currentProfile?.role === 'admin';
+  document.getElementById('history-tbody').innerHTML = [...allPeriods].reverse().map(p => `
+    <tr>
+      <td><strong>${p.period_label}</strong>${p.is_biweekly ? ` <span class="badge badge-orange" style="font-size:.65rem">Q${p.half}</span>` : ''}</td>
+      <td>${p.total_posts}</td>
+      <td>${fmtNum(p.total_reach)}</td>
+      <td>${fmtNum(p.total_views)}</td>
+      <td>${fmtNum(p.total_likes)}</td>
+      <td>${fmtNum(p.total_saves)}</td>
+      <td>${fmtNum(p.total_follows)}</td>
+      <td>${p.avg_engagement}%</td>
+      <td style="color:var(--muted);font-size:0.78rem">${p.uploaded_at ? new Date(p.uploaded_at).toLocaleDateString('es-AR') : '—'}</td>
+      <td class="admin-only" style="display:${isAdmin?'':'none'}">
+        <button class="btn btn-danger btn-sm" onclick="confirmDeletePeriod('${p.id}','${p.period_label}')">✕</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ════════════════════════════════════════════════
+// EVOLUTION CHARTS
+// ════════════════════════════════════════════════
+function buildEvolutionCharts() {
+  if (allPeriods.length === 0) return;
+  const labels = allPeriods.map(p => p.period_label);
+  const colors = { reach: '#7c5cfc', views: '#f97316' };
+
+  ['reach', 'views'].forEach(metric => {
+    const canvasId = `chart-${metric}`;
+    if (charts[canvasId]) charts[canvasId].destroy();
+    charts[canvasId] = new Chart(document.getElementById(canvasId), {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data: allPeriods.map(p => p[`total_${metric}`] || 0),
+          borderColor: colors[metric],
+          backgroundColor: colors[metric] + '20',
+          fill: true, tension: 0.3, pointRadius: 4,
+          pointBackgroundColor: colors[metric],
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#2a2a2a' }, ticks: { color: '#777', maxRotation: 30 } },
+          y: { grid: { color: '#2a2a2a' }, ticks: { color: '#777', callback: v => fmtNum(v) } }
+        }
+      }
+    });
+  });
+}
+
+// ════════════════════════════════════════════════
+// STARS
+// ════════════════════════════════════════════════
+async function toggleStar(postId, newVal) {
+  const note = newVal ? (prompt('Nota para esta publicación estrella (opcional):') || '') : '';
+  await db.from('posts').update({ is_star: newVal, star_note: note }).eq('id', postId);
+  const post = allPosts.find(p => p.id === postId);
+  if (post) { post.is_star = newVal; post.star_note = note; }
+  buildPostsTable(currentPeriodIdPosts);
+  buildStars();
+  toast(newVal ? '⭐ Marcado como estrella' : 'Estrella removida', 'success');
+}
+
+function buildStars() {
+  // All time top 3
+  const top3 = [...allPosts].sort((a,b) => b.reach - a.reach).slice(0, 3);
+  document.getElementById('stars-alltime').innerHTML = top3.length
+    ? top3.map((p,i) => starCard(p, `#${i+1} All-time`, ['🥇','🥈','🥉'][i])).join('')
+    : `<div class="empty-state"><h3>Sin posts cargados</h3></div>`;
+
+  // Top by period
+  const topByPeriod = allPeriods.map(period => {
+    const posts = allPosts.filter(p => p.period_id === period.id);
+    const top = [...posts].sort((a,b) => b.reach - a.reach)[0];
+    return top ? { post: top, label: period.period_label } : null;
+  }).filter(Boolean).reverse().slice(0, 6);
+
+  document.getElementById('stars-byperiod').innerHTML = topByPeriod.length
+    ? topByPeriod.map(({ post, label }) => starCard(post, `Top de ${label}`, '🏆')).join('')
+    : `<div class="empty-state"><h3>Sin períodos cargados</h3></div>`;
+
+  // Manual stars
+  const manual = allPosts.filter(p => p.is_star);
+  document.getElementById('stars-manual').innerHTML = manual.length
+    ? manual.map(p => starCard(p, p.star_note || 'Marcado como estrella', '⭐')).join('')
+    : `<div class="empty-state"><h3>Ninguna publicación marcada aún</h3><p>Hacé clic en ☆ en la tabla de publicaciones para marcar</p></div>`;
+}
+
+function starCard(post, label, icon) {
+  const type = post.post_type?.includes('Reel') ? 'Reel' : 'Carrusel';
+  const typeBadge = post.post_type?.includes('Reel') ? 'badge-purple' : 'badge-orange';
+  return `<div class="star-card ${post.is_star ? 'is-star' : ''}">
+    <div class="star-card-label">${icon} ${label}</div>
+    <div class="star-card-name">${truncate(post.script_name || post.description || '—', 50)}</div>
+    <div class="star-card-meta">
+      <span class="badge ${typeBadge}">${type}</span>
+      ${post.pilar ? `<span class="badge badge-green">${post.pilar}</span>` : ''}
+      ${post.angulo ? `<span class="badge badge-muted">${post.angulo}</span>` : ''}
+    </div>
+    <div class="star-metrics">
+      <div class="star-metric"><div class="star-metric-val">${fmtNum(post.reach)}</div><div class="star-metric-label">Alcance</div></div>
+      <div class="star-metric"><div class="star-metric-val">${fmtNum(post.likes)}</div><div class="star-metric-label">Likes</div></div>
+      <div class="star-metric"><div class="star-metric-val">${fmtNum(post.saves)}</div><div class="star-metric-label">Guardados</div></div>
+    </div>
+    ${post.link ? `<a href="${post.link}" target="_blank" class="link-out" style="font-size:0.75rem;margin-top:8px;display:inline-block">Ver publicación ↗</a>` : ''}
+  </div>`;
+}
+
+// ════════════════════════════════════════════════
+// PATTERNS
+// ════════════════════════════════════════════════
+function buildPatterns(posts, containerId) {
+  const container = document.getElementById(containerId);
+  if (!posts || posts.length === 0) {
+    container.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><h3>Sin datos de guiones</h3></div>`;
+    return;
+  }
+
+  const blocks = [
+    { title: '🧠 Temas (Ángulo)', key: 'angulo', color: 'var(--accent)' },
+    { title: '🏗️ Estructuras', key: 'formato', color: 'var(--orange)' },
+    { title: '📣 CTAs', key: 'cta', color: 'var(--green)' },
+    { title: '🏆 Pilares', key: 'pilar', color: 'var(--accent2)' },
+  ];
+
+  container.innerHTML = blocks.map(block => {
+    const groups = {};
+    posts.filter(p => p[block.key]).forEach(p => {
+      if (!groups[p[block.key]]) groups[p[block.key]] = [];
+      groups[p[block.key]].push(p.reach || 0);
+    });
+    const sorted = Object.entries(groups).sort((a,b) => avg(b[1]) - avg(a[1]));
+    if (sorted.length === 0) return '';
+    const maxAvg = avg(sorted[0][1]);
+    return `<div class="pattern-block">
+      <div class="pattern-block-title">${block.title}</div>
+      <div class="pattern-rows">
+        ${sorted.map(([key, vals], i) => `
+          <div class="pattern-row">
+            <div class="pattern-row-label">
+              <span class="pattern-row-name ${i===0?'best':''}">${key}</span>
+              <span class="pattern-row-count">${vals.length} post${vals.length>1?'s':''}</span>
+            </div>
+            <div class="pattern-bar-wrap">
+              <div class="pattern-bar" style="width:${maxAvg>0?Math.round(avg(vals)/maxAvg*100):0}%;background:${i===0?block.color:'var(--border)'}"></div>
+            </div>
+            <span class="pattern-row-val">${fmtNum(avg(vals))}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function avg(arr) { return arr.length ? Math.round(arr.reduce((a,b)=>a+b,0)/arr.length) : 0; }
+
+// ════════════════════════════════════════════════
+// ADD / EDIT CLIENT
+// ════════════════════════════════════════════════
+function openAddClient() {
+  editingClientId = null;
+  document.getElementById('modal-client-title').textContent = 'Nuevo cliente';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-username').value = '';
+  document.getElementById('f-start').value = '';
+  document.getElementById('f-pieces').value = '20';
+  document.getElementById('f-color').value = '#7c5cfc';
+  document.getElementById('f-notes').value = '';
+  ['net-ig','net-tt','net-yt','net-li'].forEach(id => {
+    document.getElementById(id).checked = id === 'net-ig';
+  });
+  openModal('modal-client');
+}
+
+function openEditClient() {
+  if (!currentClient) return;
+  editingClientId = currentClient.id;
+  document.getElementById('modal-client-title').textContent = 'Editar cliente';
+  document.getElementById('f-name').value = currentClient.name || '';
+  document.getElementById('f-username').value = currentClient.username || '';
+  document.getElementById('f-start').value = currentClient.start_date || '';
+  document.getElementById('f-pieces').value = currentClient.pieces_per_month || '20';
+  document.getElementById('f-color').value = currentClient.color || '#7c5cfc';
+  document.getElementById('f-notes').value = currentClient.notes || '';
+  const nets = currentClient.networks || [];
+  document.getElementById('net-ig').checked = nets.includes('Instagram');
+  document.getElementById('net-tt').checked = nets.includes('TikTok');
+  document.getElementById('net-yt').checked = nets.includes('YouTube');
+  document.getElementById('net-li').checked = nets.includes('LinkedIn');
+  openModal('modal-client');
+}
+
+async function saveClient() {
+  const name = document.getElementById('f-name').value.trim();
+  const username = document.getElementById('f-username').value.trim().replace('@','');
+  const start = document.getElementById('f-start').value;
+  const pieces = parseInt(document.getElementById('f-pieces').value);
+  const color = document.getElementById('f-color').value;
+  const notes = document.getElementById('f-notes').value.trim();
+  const networks = ['net-ig','net-tt','net-yt','net-li']
+    .filter(id => document.getElementById(id).checked)
+    .map(id => document.getElementById(id).value);
+
+  if (!name || !start) { toast('Completá nombre y fecha de inicio', 'error'); return; }
+
+  const btn = document.getElementById('save-client-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando…';
+
+  const payload = { name, username, start_date: start, pieces_per_month: pieces, color, notes, networks, active: true };
+
+  let error;
+  if (editingClientId) {
+    ({ error } = await db.from('clients').update({ ...payload, updated_at: new Date() }).eq('id', editingClientId));
+  } else {
+    ({ error } = await db.from('clients').insert({ ...payload, created_by: currentUser.id }));
+  }
+
+  btn.disabled = false; btn.innerHTML = 'Guardar cliente';
+  if (error) { toast('Error guardando cliente: ' + error.message, 'error'); return; }
+
+  closeModal('modal-client');
+  toast(editingClientId ? 'Cliente actualizado ✓' : 'Cliente creado ✓', 'success');
+  if (editingClientId) await showClientDetail(editingClientId);
+  else await showDashboard();
+}
+
+function confirmDeleteClient() {
+  document.getElementById('confirm-title').textContent = '¿Eliminar cliente?';
+  document.getElementById('confirm-msg').textContent = `Se eliminará "${currentClient.name}" y todos sus datos. Esta acción no se puede deshacer.`;
+  document.getElementById('confirm-ok-btn').onclick = deleteClient;
+  openModal('modal-confirm');
+}
+
+async function deleteClient() {
+  await db.from('clients').update({ active: false }).eq('id', currentClient.id);
+  closeModal('modal-confirm');
+  toast('Cliente eliminado', 'success');
+  showDashboard();
+}
+
+// ════════════════════════════════════════════════
+// UPLOAD METRICS
+// ════════════════════════════════════════════════
+function openUploadMetrics() {
+  if (!currentClient) return;
+  parsedMetaData = null; parsedNotionData = null;
+  document.getElementById('upload-client-info').textContent =
+    `Cliente: ${currentClient.name} · ${currentClient.pieces_per_month === 30 ? 'Reporte quincenal' : 'Reporte mensual'}`;
+  document.getElementById('up-label').value = '';
+  document.getElementById('up-start').value = '';
+  document.getElementById('up-end').value = '';
+  document.getElementById('up-half').value = '';
+  document.getElementById('uz-meta').classList.remove('loaded');
+  document.getElementById('uz-notion').classList.remove('loaded');
+  document.getElementById('uz-meta-name').textContent = '';
+  document.getElementById('uz-notion-name').textContent = '';
+  document.getElementById('upload-preview').classList.add('hidden');
+  document.getElementById('upload-save-btn').disabled = true;
+
+  // Show/hide half selector
+  const isQ = currentClient.pieces_per_month === 30;
+  document.getElementById('up-half-group').style.display = isQ ? '' : 'none';
+
+  openModal('modal-upload');
+}
+
+// File listeners
+document.getElementById('file-meta').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  Papa.parse(file, { header: true, skipEmptyLines: true, complete: res => {
+    parsedMetaData = res.data;
+    document.getElementById('uz-meta-name').textContent = file.name;
+    document.getElementById('uz-meta').classList.add('loaded');
+    tryPreview();
+  }});
+});
+
+document.getElementById('file-notion').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  Papa.parse(file, { header: true, skipEmptyLines: true, complete: res => {
+    parsedNotionData = res.data;
+    document.getElementById('uz-notion-name').textContent = file.name;
+    document.getElementById('uz-notion').classList.add('loaded');
+    tryPreview();
+  }});
+});
+
+function tryPreview() {
+  if (!parsedMetaData || !parsedNotionData) return;
+  const merged = mergePosts(parsedMetaData, parsedNotionData);
+  const preview = document.getElementById('upload-preview');
+  preview.classList.remove('hidden');
+  document.getElementById('upload-preview-content').innerHTML =
+    `<p class="small muted" style="margin-bottom:8px">${merged.length} publicaciones detectadas · ${merged.filter(p=>p.notion).length} cruzadas con Notion</p>
+    <div class="table-wrap"><table><thead><tr>
+      <th>Fecha</th><th>Guión</th><th>Tipo</th><th>Alcance</th><th>Views</th>
+    </tr></thead><tbody>
+    ${merged.slice(0,5).map(p => `<tr>
+      <td style="color:var(--muted)">${p.pubDate ? p.pubDate.toLocaleDateString('es-AR') : '—'}</td>
+      <td>${truncate(p.scriptName||p.descripcion,35)}</td>
+      <td>${p.tipo.includes('Reel')?'Reel':'Carrusel'}</td>
+      <td>${fmtNum(p.alcance)}</td>
+      <td>${fmtNum(p.views)}</td>
+    </tr>`).join('')}
+    ${merged.length > 5 ? `<tr><td colspan="5" style="color:var(--muted);text-align:center">… y ${merged.length-5} más</td></tr>` : ''}
+    </tbody></table></div>`;
+  document.getElementById('upload-save-btn').disabled = false;
+}
+
+function mergePosts(metaRows, notionRows) {
+  // Build Notion index
+  const notionByDate = {};
+  notionRows.forEach(r => {
+    const d = new Date(r['Fecha subido'] || '');
+    if (isNaN(d)) return;
+    const k = dateKey(d);
+    if (!notionByDate[k]) notionByDate[k] = [];
+    notionByDate[k].push(r);
+  });
+
+  return metaRows.map(row => {
+    const pubDate = parseMetaDate(row['Hora de publicación']);
+    if (!pubDate) return null;
+    const k = dateKey(pubDate);
+    const matches = notionByDate[k] || [];
+    const metaTipo = (row['Tipo de publicación']||'').toLowerCase();
+    let notion = matches.length === 1 ? matches[0] :
+      matches.find(n => {
+        const fmt = (n['Formato']||'').toLowerCase();
+        if (metaTipo.includes('reel') && (fmt.includes('reel')||fmt.includes('video'))) return true;
+        if (metaTipo.includes('secuencia') && fmt.includes('carrusel')) return true;
+      }) || matches[0] || null;
+
+    const alcance = num(row['Alcance']);
+    const views   = num(row['Visualizaciones']);
+    const likes   = num(row['Me gusta']);
+    const comments= num(row['Comentarios']);
+    const shares  = num(row['Veces que se compartió']);
+    const saves   = num(row['Veces que se guardó']);
+    const follows = num(row['Seguimientos']);
+    const interactions = likes + comments + shares + saves;
+    const engagement = alcance > 0 ? +((interactions/alcance)*100).toFixed(2) : 0;
+
+    return {
+      pubDate, tipo: row['Tipo de publicación']||'',
+      descripcion: row['Descripción']||'', link: row['Enlace permanente']||'',
+      alcance, views, likes, comments, shares, saves, follows, engagement, notion,
+      scriptName: notion ? (notion['Nombre de la tarea']||notion['Name']||'') : '',
+      pilar:  notion ? (notion['Pilar de contenido']||'') : '',
+      angulo: notion ? (notion['Angulo']||'')             : '',
+      formato:notion ? (notion['Formato']||'')            : '',
+      cta:    notion ? (notion['Tiene CTA']||'')          : '',
+      sfCode: notion ? (notion['SF-MQ']||'')              : '',
+    };
+  }).filter(Boolean);
+}
+
+async function saveMetrics() {
+  const label = document.getElementById('up-label').value.trim();
+  const start = document.getElementById('up-start').value;
+  const end   = document.getElementById('up-end').value;
+  const half  = document.getElementById('up-half').value;
+
+  if (!label || !start || !end) { toast('Completá período, fecha inicio y fin', 'error'); return; }
+
+  const btn = document.getElementById('upload-save-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando…';
+
+  const posts = mergePosts(parsedMetaData, parsedNotionData);
+  const isQ = !!half;
+
+  // Aggregate KPIs
+  const totalPosts    = posts.length;
+  const totalReach    = posts.reduce((s,p) => s+p.alcance, 0);
+  const totalViews    = posts.reduce((s,p) => s+p.views, 0);
+  const totalLikes    = posts.reduce((s,p) => s+p.likes, 0);
+  const totalComments = posts.reduce((s,p) => s+p.comments, 0);
+  const totalShares   = posts.reduce((s,p) => s+p.shares, 0);
+  const totalSaves    = posts.reduce((s,p) => s+p.saves, 0);
+  const totalFollows  = posts.reduce((s,p) => s+p.follows, 0);
+  const avgEng        = posts.length ? +(posts.reduce((s,p)=>s+p.engagement,0)/posts.length).toFixed(2) : 0;
+
+  // Top values
+  const topKey = (field) => {
+    const g = {};
+    posts.filter(p=>p[field]).forEach(p => {
+      if (!g[p[field]]) g[p[field]] = [];
+      g[p[field]].push(p.alcance);
+    });
+    return Object.entries(g).sort((a,b)=>avg(b[1])-avg(a[1]))[0]?.[0] || null;
+  };
+
+  // Insert period
+  const { data: period, error: pErr } = await db.from('metric_periods').insert({
+    client_id: currentClient.id,
+    period_label: label,
+    period_start: start, period_end: end,
+    is_biweekly: isQ, half: half ? parseInt(half) : null,
+    total_posts: totalPosts, total_reach: totalReach,
+    total_views: totalViews, total_likes: totalLikes,
+    total_comments: totalComments, total_shares: totalShares,
+    total_saves: totalSaves, total_follows: totalFollows,
+    avg_engagement: avgEng,
+    top_angulo: topKey('angulo'), top_formato: topKey('formato'),
+    top_cta: topKey('cta'), top_pilar: topKey('pilar'),
+    uploaded_by: currentUser.id,
+  }).select().single();
+
+  if (pErr) { toast('Error: ' + pErr.message, 'error'); btn.disabled = false; btn.innerHTML = 'Guardar métricas'; return; }
+
+  // Insert posts
+  const postRows = posts.map(p => ({
+    client_id: currentClient.id, period_id: period.id,
+    pub_date: p.pubDate.toISOString().split('T')[0],
+    post_type: p.tipo, link: p.link, description: p.descripcion,
+    script_name: p.scriptName, pilar: p.pilar, angulo: p.angulo,
+    formato: p.formato, cta: p.cta, sf_code: p.sfCode,
+    reach: p.alcance, views: p.views, likes: p.likes,
+    comments: p.comments, shares: p.shares, saves: p.saves,
+    follows: p.follows, engagement: p.engagement,
+  }));
+
+  const { error: postsErr } = await db.from('posts').insert(postRows);
+  if (postsErr) { toast('Error guardando posts: ' + postsErr.message, 'error'); btn.disabled = false; btn.innerHTML = 'Guardar métricas'; return; }
+
+  closeModal('modal-upload');
+  toast(`✓ ${totalPosts} publicaciones guardadas`, 'success');
+  await loadClientData(currentClient.id);
+}
+
+// ════════════════════════════════════════════════
+// DELETE PERIOD
+// ════════════════════════════════════════════════
+function confirmDeletePeriod(periodId, label) {
+  document.getElementById('confirm-title').textContent = '¿Eliminar período?';
+  document.getElementById('confirm-msg').textContent = `Se eliminará "${label}" y todas sus publicaciones.`;
+  document.getElementById('confirm-ok-btn').onclick = () => deletePeriod(periodId);
+  openModal('modal-confirm');
+}
+
+async function deletePeriod(periodId) {
+  await db.from('metric_periods').delete().eq('id', periodId);
+  closeModal('modal-confirm');
+  toast('Período eliminado', 'success');
+  await loadClientData(currentClient.id);
+}
+
+// ════════════════════════════════════════════════
+// PDF EXPORT
+// ════════════════════════════════════════════════
+function exportClientPDF() {
+  // Switch to overview tab for printing
+  switchTab('overview');
+  setTimeout(() => window.print(), 300);
+}
+
+// ════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════
+function switchTab(tabName) {
+  document.querySelectorAll('.tab').forEach((el,i) => {
+    const names = ['overview','history','posts','stars'];
+    el.classList.toggle('active', names[i] === tabName);
+  });
+  ['overview','history','posts','stars'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.classList.toggle('hidden', t !== tabName);
+  });
+}
+
+// ════════════════════════════════════════════════
+// MODAL HELPERS
+// ════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.remove('hidden'); }
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.add('hidden');
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(el => el.classList.add('hidden'));
+  }
+});
+
+// ════════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════════
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  const icons = { success: '✓', error: '✕', info: 'ℹ' };
+  el.innerHTML = `<span>${icons[type]||''}</span> ${msg}`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════
+function parseMetaDate(str) {
+  if (!str) return null;
+  const [datePart] = str.split(' ');
+  const [m,d,y] = datePart.split('/');
+  if (!m||!d||!y) return null;
+  return new Date(+y, +m-1, +d);
+}
+function dateKey(d) {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+function num(v) { return parseInt(String(v||0).replace(/,/g,'')) || 0; }
+function fmtNum(n) {
+  n = n || 0;
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n/1000).toFixed(1) + 'K';
+  return n.toLocaleString('es-AR');
+}
+function truncate(str, n=50) {
+  if (!str) return '—';
+  return str.length > n ? str.slice(0,n) + '…' : str;
+}
+function formatDate(str) {
+  if (!str) return '—';
+  return new Date(str + 'T12:00:00').toLocaleDateString('es-AR', { day:'numeric', month:'short', year:'numeric' });
+}
+
+// ════════════════════════════════════════════════
+// START
+// ════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
