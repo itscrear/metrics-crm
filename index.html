@@ -996,8 +996,11 @@ async function runIA() {
 }
 
 async function getNotionScripts(dbId) {
-  const clean = dbId.replace(/-/g, '');
-  const fid = [clean.slice(0,8),clean.slice(8,12),clean.slice(12,16),clean.slice(16,20),clean.slice(20)].join('-');
+  const clean = (dbId||'').replace(/-/g, '');
+  const fid = clean.length === 32
+    ? [clean.slice(0,8),clean.slice(8,12),clean.slice(12,16),clean.slice(16,20),clean.slice(20)].join('-')
+    : dbId; // si ya tiene guiones, usarlo directo
+  console.log('[Notion] dbId original:', dbId, '| fid formateado:', fid);
   const res = await fetch(EDGE_FN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
@@ -1005,8 +1008,28 @@ async function getNotionScripts(dbId) {
   });
   if (!res.ok) throw new Error(`Edge Function error: ${res.status} — ${await res.text()}`);
   const data = await res.json();
-  if (data.error) throw new Error(data.error);
-  if (!data.results) throw new Error('Notion no devolvió resultados');
+  console.log('[Notion] Respuesta cruda:', JSON.stringify(data).slice(0, 500));
+
+  // Mostrar diagnóstico en pantalla
+  if (data.object === 'error') {
+    throw new Error(`Notion error ${data.status}: ${data.message}`);
+  }
+  if (!data.results) {
+    document.getElementById('ia-results').innerHTML = `
+      <div class="err" style="white-space:pre-wrap;font-size:12px">
+        ❌ Notion no devolvió 'results'. Respuesta completa:\n${JSON.stringify(data, null, 2).slice(0,1000)}
+      </div>`;
+    throw new Error('Notion no devolvió results — ver diagnóstico arriba');
+  }
+  if (data.results.length === 0) {
+    document.getElementById('ia-results').innerHTML = `
+      <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:16px;margin-bottom:16px">
+        ⚠️ <strong>Notion devolvió 0 páginas.</strong> La base de datos está vacía o el Database ID es incorrecto.<br><br>
+        <strong>Database ID usado:</strong> ${fid}<br>
+        <strong>Respuesta:</strong> ${JSON.stringify(data).slice(0,300)}
+      </div>`;
+    throw new Error('Notion devolvió 0 páginas');
+  }
   return parseScripts(data.results);
 }
 
