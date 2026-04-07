@@ -1011,7 +1011,7 @@ async function getNotionScripts(dbId) {
   const res = await fetch(EDGE_FN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
-    body: JSON.stringify({ databaseId: fid, notionToken: NOTION })
+    body: JSON.stringify({ databaseId: fid })
   });
   if (!res.ok) throw new Error(`Edge Function error: ${res.status} — ${await res.text()}`);
   const data = await res.json();
@@ -1130,7 +1130,7 @@ Devolvé SOLO un JSON válido con esta estructura exacta:
   const res = await fetch(EDGE_FN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
-    body: JSON.stringify({ action: 'claude', claudeKey: CLAUDE, prompt })
+    body: JSON.stringify({ action: 'claude', prompt })
   });
   if (!res.ok) throw new Error(`Edge Function error: ${res.status} — ${await res.text()}`);
   const d = await res.json();
