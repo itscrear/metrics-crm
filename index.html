@@ -882,14 +882,57 @@ async function runAIAnalysis() {
 async function fetchNotionScripts(databaseId) {
   const cleanId = databaseId.replace(/-/g, '');
   const fmtId = [cleanId.slice(0,8), cleanId.slice(8,12), cleanId.slice(12,16), cleanId.slice(16,20), cleanId.slice(20)].join('-');
-  const res = await fetch(`https://api.notion.com/v1/databases/${fmtId}/query`, {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${NOTION_TOKEN}`, 'Content-Type': 'application/json', 'Notion-Version': NOTION_VERSION },
-    body: JSON.stringify({ filter: { property: 'Estado', status: { equals: 'Subido' } }, page_size: 100 })
+
+  // Use Supabase Edge Function as CORS proxy for Notion API
+  // Direct Notion API calls are blocked by CORS from browsers
+  const body = JSON.stringify({
+    filter: { property: 'Estado', status: { equals: 'Subido' } },
+    page_size: 100
   });
-  if (!res.ok) throw new Error(`Notion API: ${res.status} — ${await res.text()}`);
-  const data = await res.json();
-  return parseNotionScripts(data.results);
+
+  // Try direct call first (works in some environments)
+  try {
+    const res = await fetch(`https://api.notion.com/v1/databases/${fmtId}/query`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${NOTION_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Notion-Version': NOTION_VERSION,
+      },
+      body
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return parseNotionScripts(data.results);
+    }
+  } catch(e) {
+    // CORS blocked, fall through to proxy
+  }
+
+  // Fallback: use allorigins.win as CORS proxy
+  const notionUrl = `https://api.notion.com/v1/databases/${fmtId}/query`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(notionUrl)}`;
+
+  // allorigins doesn't support POST with custom headers, so we use a different approach
+  // Use cors.sh proxy
+  const corsProxy = 'https://cors.sh/';
+  const res2 = await fetch(`${corsProxy}${notionUrl}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${NOTION_TOKEN}`,
+      'Content-Type': 'application/json',
+      'Notion-Version': NOTION_VERSION,
+      'x-cors-api-key': 'temp_' + Math.random().toString(36).slice(2),
+    },
+    body
+  });
+
+  if (!res2.ok) {
+    const errText = await res2.text();
+    throw new Error(`No se pudo conectar con Notion (CORS bloqueado). Contactá al administrador. Detalle: ${res2.status}`);
+  }
+  const data2 = await res2.json();
+  return parseNotionScripts(data2.results);
 }
 
 function parseNotionScripts(pages) {
