@@ -301,8 +301,8 @@
         <button class="tab" onclick="switchTab('historial')">📅 Historial</button>
         <button class="tab" onclick="switchTab('publicaciones')">📱 Publicaciones</button>
         <button class="tab" onclick="switchTab('estrellas')">⭐ Estrellas</button>
-        <button class="tab" onclick="switchTab('ia')" id="tab-ia" style="display:none">✨ Análisis IA</button>
-        <button class="tab" onclick="switchTab('cargar')" id="tab-cargar">+ Cargar métricas</button>
+        <button class="tab" onclick="switchTab('ia')" id="btn-tab-ia" style="display:none">✨ Análisis IA</button>
+        <button class="tab" onclick="switchTab('cargar')" id="btn-tab-cargar">+ Cargar métricas</button>
       </div>
 
       <div class="tab-content active" id="tab-resumen">
@@ -502,7 +502,7 @@ async function openClient(id) {
     : '';
 
   // Show IA tab always
-  document.getElementById('tab-ia').style.display = 'block';
+  document.getElementById('btn-tab-ia').style.display = 'block';
 
   await loadPeriods();
   switchTab('resumen');
