@@ -1115,6 +1115,13 @@ ${metaSummary}
 
 IMPORTANTE: Si hay pocos o ningún cruce, igual analizá los patrones de los guiones (temas, hooks, formatos) y combinalo con las métricas generales disponibles. Dame recomendaciones accionables de todas formas.
 
+REGLAS CRÍTICAS PARA EL JSON:
+- Usá SOLO comillas dobles para strings
+- NO uses apóstrofes ni comillas simples dentro de los valores
+- Si un título tiene comillas, reemplazalas por paréntesis
+- NO uses saltos de línea dentro de los valores de string
+- El JSON debe ser parseable directamente con JSON.parse()
+
 Devolvé SOLO un JSON válido con esta estructura exacta:
 {
   "resumen_ejecutivo": "3-4 líneas con los hallazgos más importantes",
@@ -1138,7 +1145,33 @@ Devolvé SOLO un JSON válido con esta estructura exacta:
   const txt = d.text || d.content?.[0]?.text || '';
   const m = txt.match(/\{[\s\S]*\}/);
   if (!m) throw new Error('No se recibió análisis válido. Respuesta: ' + txt.slice(0,200));
-  return JSON.parse(m[0]);
+  // Intentar parse directo, si falla limpiar caracteres problemáticos
+  try {
+    return JSON.parse(m[0]);
+  } catch(e1) {
+    try {
+      // Limpiar saltos de línea dentro de strings y caracteres de control
+      const cleaned = m[0]
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')  // control chars
+        .replace(/\n/g, ' ')
+        .replace(/\r/g, ' ')
+        .replace(/\t/g, ' ');
+      return JSON.parse(cleaned);
+    } catch(e2) {
+      // Último recurso: extraer cada campo individualmente
+      const safe = {};
+      const fields = ['resumen_ejecutivo','analisis_ganchos','analisis_ctas'];
+      fields.forEach(f => {
+        const fm = txt.match(new RegExp(`"${f}"\\s*:\\s*"([^"]*)"`, 's'));
+        if (fm) safe[f] = fm[1];
+      });
+      ['patrones_ganadores','patrones_debiles','recomendaciones','proximos_guiones'].forEach(f => {
+        safe[f] = [];
+      });
+      if (Object.keys(safe).length === 0) throw new Error('JSON inválido: ' + e2.message + '\nTexto: ' + txt.slice(0,300));
+      return safe;
+    }
+  }
 }
 
 function renderIAResults(a, total, crossed, notionDates, metaDates) {
