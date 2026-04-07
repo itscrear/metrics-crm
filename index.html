@@ -492,7 +492,7 @@ async function renderResumen() {
   }
   const latest = currentPeriods[0];
   const prev = currentPeriods[1];
-  const { data: posts } = await db.from('posts').select('*').eq('period_id', latest.id).order('likes', { ascending: false });
+  const { data: posts } = await db.from('posts').select('*').eq('period_id', latest.id).order('likes', { ascending: false }).order('saves', { ascending: false });
 
   const trend = (curr, p) => {
     if (!p || p === 0) return '';
@@ -601,12 +601,12 @@ async function loadPubsForPeriod(periodId) {
     <thead><tr><th>⭐</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Guion</th><th>Link</th></tr></thead>
     <tbody>${posts.map(p => `<tr class="${p.script_content ? 'post-with-script' : 'post-no-script'}">
       <td><button class="star-btn" onclick="toggleStar('${p.id}',${p.is_star},this)">${p.is_star?'⭐':'☆'}</button></td>
-      <td>${p.post_date||'—'}</td>
+      <td>${p.pub_date||'—'}</td>
       <td>${p.description?.slice(0,50)||'—'}${p.description?.length>50?'…':''}</td>
       <td>${p.post_type||'—'}</td>
       <td>${fmt(p.likes)}</td><td>${fmt(p.saves)}</td><td>${fmt(p.reach)}</td>
       <td>${p.script_content ? '<span class="script-badge">✓ Guion</span>' : '<span style="color:var(--gray-300)">—</span>'}</td>
-      <td class="link-cell">${p.url?`<a href="${p.url}" target="_blank">Ver →</a>`:'—'}</td>
+      <td class="link-cell">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
@@ -626,10 +626,10 @@ async function renderEstrellas() {
   el.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Período</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
     <tbody>${stars.map(p => `<tr>
-      <td>${p.metric_periods?.period_label||'—'}</td><td>${p.post_date||'—'}</td>
+      <td>${p.metric_periods?.period_label||'—'}</td><td>${p.pub_date||'—'}</td>
       <td>⭐ ${p.description?.slice(0,60)||'—'}</td><td>${p.post_type||'—'}</td>
       <td>${fmt(p.likes)}</td><td>${fmt(p.saves)}</td><td>${fmt(p.reach)}</td>
-      <td class="link-cell">${p.url?`<a href="${p.url}" target="_blank">Ver →</a>`:'—'}</td>
+      <td class="link-cell">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
@@ -668,14 +668,9 @@ function handleCSVUpload(event) {
 }
 
 function processCSV(rows) {
-  // Filter only "Total" rows (Meta exports one row per post with "Total" in Fecha column)
-  const posts = rows.filter(r => {
-    const fecha = r['Fecha'] || r['Date'] || '';
-    return fecha.toLowerCase() === 'total' || fecha === '';
-  });
-
-  // If no "Total" filter works, use all rows with a permalink
-  const validPosts = posts.length > 0 ? posts : rows.filter(r => r['Enlace permanente'] || r['Permalink']);
+  // Meta exports one row per post, all with Fecha = "Total"
+  // Filter rows that have a valid permalink (= real posts)
+  const validPosts = rows.filter(r => r['Enlace permanente'] || r['Permalink'] || r['Identificador de la publicación']);
 
   if (!validPosts.length) {
     document.getElementById('csv-preview-area').innerHTML = '<div class="error-msg">No se encontraron publicaciones en el CSV. Verificá que sea el archivo correcto.</div>';
@@ -763,33 +758,36 @@ async function saveCSVPeriod() {
 
   if (pErr) { alert('Error: ' + pErr.message); btn.disabled = false; btn.innerHTML = '💾 Guardar período'; return; }
 
-  // Save individual posts
+  // Save individual posts — using exact column names from DB schema
   const postsToInsert = parsedCSVData.posts.map(r => {
-    // Parse date from "MM/DD/YYYY HH:MM" → "YYYY-MM-DD"
-    const rawDate = r['Hora de publicación'] || r['Published'] || r['Fecha'] || '';
-    let postDate = null;
+    const rawDate = r['Hora de publicación'] || r['Published'] || '';
+    let pubDate = null;
     if (rawDate && rawDate.includes('/')) {
       const parts = rawDate.split(' ')[0].split('/');
-      if (parts.length === 3) postDate = `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
-    } else if (rawDate.match(/\d{4}-\d{2}-\d{2}/)) {
-      postDate = rawDate.split('T')[0];
+      if (parts.length === 3) pubDate = `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+    } else if (rawDate.match && rawDate.match(/\d{4}-\d{2}-\d{2}/)) {
+      pubDate = rawDate.split('T')[0];
     }
+    if (!pubDate) pubDate = periodStart; // fallback
     return {
       client_id: currentClient.id,
       period_id: period.id,
-      description: r['Descripción'] || r['Description'] || null,
-      post_date: postDate,
+      pub_date: pubDate,                                                          // date NOT NULL
       post_type: r['Tipo de publicación'] || r['Post type'] || null,
-      url: r['Enlace permanente'] || r['Permalink'] || null,
-      likes: parseInt(r['Me gusta'] || r['Likes'] || 0) || null,
-      saves: parseInt(r['Veces que se guardó'] || r['Saves'] || 0) || null,
-      reach: parseInt(r['Alcance'] || r['Reach'] || 0) || null,
-      shares: parseInt(r['Veces que se compartió'] || r['Shares'] || 0) || null,
+      link: r['Enlace permanente'] || r['Permalink'] || null,
+      description: r['Descripción'] || r['Description'] || null,
+      reach: parseInt(r['Alcance'] || r['Reach'] || 0) || 0,
+      views: parseInt(r['Visualizaciones'] || r['Impressions'] || 0) || 0,
+      likes: parseInt(r['Me gusta'] || r['Likes'] || 0) || 0,
+      comments: parseInt(r['Comentarios'] || r['Comments'] || 0) || 0,
+      shares: parseInt(r['Veces que se compartió'] || r['Shares'] || 0) || 0,
+      saves: parseInt(r['Veces que se guardó'] || r['Saves'] || 0) || 0,
+      follows: parseInt(r['Seguimientos'] || r['Follows'] || 0) || 0,
     };
   });
 
   const { error: postsErr } = await db.from('posts').insert(postsToInsert);
-  if (postsErr) console.error('Error guardando posts:', postsErr);
+  if (postsErr) { alert('Error guardando publicaciones: ' + postsErr.message); console.error(postsErr); }
 
   await loadPeriods();
   parsedCSVData = null;
@@ -931,9 +929,9 @@ function parseNotionScripts(pages) {
 
 function crossByDate(scripts, posts) {
   const postsByDate = {};
-  posts.forEach(p => { if (p.post_date) postsByDate[p.post_date] = p; });
+  posts.forEach(p => { if (p.pub_date) postsByDate[p.pub_date] = p; });
   return scripts
-    .map(s => ({ ...s, post: s.upload_date ? postsByDate[s.upload_date] : null }))
+    .map(s => ({ ...s, post: s.upload_date ? (postsByDate[s.upload_date] || null) : null }))
     .filter(s => s.post);
 }
 
