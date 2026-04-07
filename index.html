@@ -1184,6 +1184,42 @@ async function getNotionScripts(dbId) {
   return parseScripts(data.results);
 }
 
+function normalizeDate(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+
+  // Ya está en formato YYYY-MM-DD (con o sin hora)
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
+
+  // DD/MM/YYYY o DD-MM-YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+
+  // MM/DD/YYYY (formato americano — si el primer número > 12 es día)
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (mdy && parseInt(mdy[1]) <= 12 && parseInt(mdy[2]) > 12)
+    return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+
+  // "April 7, 2026" o "7 de abril de 2026" — usar Date.parse
+  const months = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
+    enero:1,febrero:2,marzo:3,abril:4,mayo:5,junio:6,julio:7,agosto:8,septiembre:9,octubre:10,noviembre:11,diciembre:12 };
+  const named = s.toLowerCase().match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/);
+  if (named && months[named[2]]) {
+    return `${named[3]}-${String(months[named[2]]).padStart(2,'0')}-${named[1].padStart(2,'0')}`;
+  }
+  const named2 = s.toLowerCase().match(/(\w+)\s+(\d{1,2}),?\s+(\d{4})/);
+  if (named2 && months[named2[1]]) {
+    return `${named2[3]}-${String(months[named2[1]]).padStart(2,'0')}-${named2[2].padStart(2,'0')}`;
+  }
+
+  // Último recurso: Date.parse
+  const d = new Date(s);
+  if (!isNaN(d)) return d.toISOString().split('T')[0];
+
+  return null;
+}
+
 function parseScripts(pages) {
   return pages.map(page => {
     const pp = page.properties;
@@ -1197,21 +1233,21 @@ function parseScripts(pages) {
       if (p.type==='status') return p.status?.name||null;
       return null;
     };
-    // Buscar fecha en CUALQUIER columna de tipo date (no solo por nombre)
+    // Buscar fecha en CUALQUIER columna de tipo date primero
     let uploadDate = null;
     const colNames = Object.keys(pp);
-    // Primero buscar por tipo date directamente
     for (const k of colNames) {
       if (pp[k].type === 'date' && pp[k].date?.start) {
-        uploadDate = pp[k].date.start.split('T')[0]; // solo YYYY-MM-DD
+        uploadDate = normalizeDate(pp[k].date.start);
         break;
       }
     }
-    // Si no encontró, buscar por nombre
+    // Si no encontró por tipo date, buscar en texto usando normalizeDate
     if (!uploadDate) {
       for (const k of colNames) {
         const v = g(pp[k]);
-        if (v && /\d{4}-\d{2}-\d{2}/.test(v)) { uploadDate = v.split('T')[0]; break; }
+        const nd = normalizeDate(v);
+        if (nd) { uploadDate = nd; break; }
       }
     }
     const tk = colNames.find(k => pp[k].type==='title');
