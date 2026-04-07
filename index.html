@@ -237,10 +237,10 @@ tr:hover td { background:var(--gray-50); }
     <div class="modal-title" id="mc-title">Nuevo cliente</div>
     <div class="grid2">
       <div class="fg"><label>Nombre *</label><input type="text" id="mc-name"></div>
-      <div class="fg"><label>@Instagram</label><input type="text" id="mc-handle" placeholder="@usuario"></div>
+      <div class="fg"><label>Nicho</label><input type="text" id="mc-niche" placeholder="Ej: Fitness"></div>
     </div>
     <div class="grid2">
-      <div class="fg"><label>Nicho</label><input type="text" id="mc-niche" placeholder="Ej: Fitness"></div>
+      <div class="fg" style="display:none"><label>_</label><input type="text" id="mc-handle"></div>
       <div class="fg"><label>Piezas por mes</label>
         <select id="mc-pieces">
           <option value="15">15 / mes</option>
@@ -351,7 +351,7 @@ function renderGrid() {
   el.innerHTML = clients.map(c => `
     <div class="client-card" onclick="openClient('${c.id}')">
       <div class="client-name"><span class="dot ${c.active?'dot-on':'dot-off'}"></span>${c.name}</div>
-      <div class="client-meta">${c.handle||'—'} · ${c.niche||'—'}</div>
+      <div class="client-meta">${c.niche||'—'}</div>
       <div class="mt8">
         <span class="badge">${c.pieces_per_month} piezas/mes</span>
         ${c.notion_database_id ? '<span class="badge badge-green">✦ IA lista</span>' : ''}
@@ -366,7 +366,7 @@ async function openClient(id) {
   document.getElementById('alerts-box').style.display = 'none';
   document.getElementById('d-name').textContent = client.name;
   document.getElementById('d-meta').textContent =
-    [client.handle, client.niche, `${client.pieces_per_month} piezas/mes`, `Desde ${fmtDate(client.start_date)}`].filter(Boolean).join(' · ');
+    [client.niche, `${client.pieces_per_month} piezas/mes`, `Desde ${fmtDate(client.start_date)}`].filter(Boolean).join(' · ');
   document.getElementById('d-actions').innerHTML = role === 'admin'
     ? `<button class="btn btn-s btn-sm" onclick="openEditClient()">✏️ Editar</button>
        <button class="btn btn-d btn-sm" onclick="confirmDel()">🗑️ Eliminar</button>` : '';
@@ -414,24 +414,35 @@ function openEditClient() {
 }
 
 async function saveClient() {
-  const payload = {
-    name: document.getElementById('mc-name').value.trim(),
-    handle: document.getElementById('mc-handle').value.trim() || null,
-    niche: document.getElementById('mc-niche').value.trim() || null,
-    pieces_per_month: parseInt(document.getElementById('mc-pieces').value),
-    active: document.getElementById('mc-active').value === 'true',
-    start_date: document.getElementById('mc-start').value || null,
-    notion_database_id: document.getElementById('mc-notion').value.trim() || null,
-  };
-  if (!payload.name) { alert('El nombre es obligatorio'); return; }
+  const name       = document.getElementById('mc-name').value.trim();
+  const niche      = document.getElementById('mc-niche').value.trim() || null;
+  const pieces     = parseInt(document.getElementById('mc-pieces').value);
+  const active     = document.getElementById('mc-active').value === 'true';
+  const start_date = document.getElementById('mc-start').value || new Date().toISOString().split('T')[0];
+  const notion_database_id = document.getElementById('mc-notion').value.trim() || null;
+
+  if (!name) { alert('El nombre es obligatorio'); return; }
+
+  const payload = { name, niche, pieces_per_month: pieces, active, start_date, notion_database_id };
+  console.log('[saveClient] payload:', JSON.stringify(payload));
+
   let err;
   if (editId) {
     ({ error: err } = await db.from('clients').update(payload).eq('id', editId));
-    if (!err) { client = { ...client, ...payload }; document.getElementById('d-name').textContent = client.name; document.getElementById('btn-ia').style.display = client.notion_database_id ? 'block' : 'none'; }
+    if (!err) {
+      client = { ...client, ...payload };
+      document.getElementById('d-name').textContent = client.name;
+      document.getElementById('d-meta').textContent = [client.niche, `${client.pieces_per_month} piezas/mes`, `Desde ${fmtDate(client.start_date)}`].filter(Boolean).join(' · ');
+      document.getElementById('btn-ia').style.display = client.notion_database_id ? 'block' : 'none';
+    }
   } else {
     ({ error: err } = await db.from('clients').insert(payload));
   }
-  if (err) { alert('Error: ' + err.message); return; }
+  if (err) {
+    console.error('[saveClient] Error:', err);
+    alert(`Error guardando cliente:\n${err.message}\n\nCódigo: ${err.code}\nDetalles: ${err.details || '—'}\nHint: ${err.hint || '—'}`);
+    return;
+  }
   closeModal('modal-client');
   await loadClients();
 }
@@ -649,10 +660,58 @@ function renderCargar() {
         <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)">
       </div>
       <div id="csv-preview"></div>
-      <div class="mt16">
+      <div class="mt16" style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-p" id="btn-save" onclick="saveCSV()" style="display:none">💾 Guardar período y publicaciones</button>
+        <button class="btn btn-s btn-sm" onclick="testDB()" title="Verificar conexión con la base de datos">🔍 Test BD</button>
       </div>
     </div>`;
+}
+
+async function testDB() {
+  const prev = document.getElementById('csv-preview');
+  prev.innerHTML = '<div class="loading">Probando conexión con la BD...</div>';
+  const lines = [];
+  lines.push(`👤 Usuario: ${user?.email || '—'}`);
+  lines.push(`🔑 Rol: ${role}`);
+  lines.push(`📋 Cliente activo: ${client?.name || '—'} (id: ${client?.id || '—'})`);
+
+  // Test read clients
+  const { data: cl, error: clErr } = await db.from('clients').select('id').limit(1);
+  lines.push(clErr ? `❌ clients SELECT: ${clErr.message}` : `✅ clients SELECT: OK`);
+
+  // Test insert metric_periods (dry run — usamos un select para verificar permisos)
+  const { error: mpErr } = await db.from('metric_periods').select('id').limit(1);
+  lines.push(mpErr ? `❌ metric_periods SELECT: ${mpErr.message}` : `✅ metric_periods SELECT: OK`);
+
+  // Test insert posts
+  const { error: psErr } = await db.from('posts').select('id').limit(1);
+  lines.push(psErr ? `❌ posts SELECT: ${psErr.message}` : `✅ posts SELECT: OK`);
+
+  // Test actual insert on metric_periods (write test)
+  if (client?.id) {
+    const testRow = {
+      client_id: client.id,
+      period_label: '__test__',
+      period_start: '2000-01-01',
+      period_end:   '2000-01-01',
+      total_posts: 0, total_reach: 0, total_views: 0, total_likes: 0,
+      total_saves: 0, total_shares: 0, total_comments: 0, total_follows: 0,
+    };
+    const { data: td, error: tErr } = await db.from('metric_periods').insert(testRow).select().single();
+    if (tErr) {
+      lines.push(`❌ metric_periods INSERT: ${tErr.message} | código: ${tErr.code} | hint: ${tErr.hint||'—'}`);
+    } else {
+      lines.push(`✅ metric_periods INSERT: OK (id: ${td.id})`);
+      // limpiar el test
+      await db.from('posts').delete().eq('period_id', td.id);
+      await db.from('metric_periods').delete().eq('id', td.id);
+      lines.push(`🧹 Fila de test eliminada`);
+    }
+  } else {
+    lines.push(`⚠️ No hay cliente seleccionado para test de INSERT`);
+  }
+
+  prev.innerHTML = `<div style="background:#F3F4F6;border-radius:8px;padding:16px;font-size:13px;font-family:monospace;white-space:pre-wrap">${lines.join('\n')}</div>`;
 }
 
 function handleCSV(e) {
@@ -720,10 +779,16 @@ function processCSV(rows) {
   document.getElementById('btn-save').style.display = 'flex';
 }
 
+function showSaveError(msg) {
+  const prev = document.getElementById('csv-preview');
+  prev.innerHTML = `<div class="err" style="margin-top:12px;white-space:pre-wrap;word-break:break-all">❌ ${msg}</div>`;
+}
+
 async function saveCSV() {
   const label = document.getElementById('p-label').value.trim();
-  if (!label) { alert('Completá el nombre del período'); return; }
-  if (!csvData) { alert('Primero subí el CSV'); return; }
+  if (!label) { showSaveError('Completá el nombre del período antes de guardar.'); return; }
+  if (!csvData) { showSaveError('Primero subí el CSV.'); return; }
+  if (!client || !client.id) { showSaveError('Error interno: cliente no cargado. Volvé al listado y abrí el cliente de nuevo.'); return; }
 
   const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...';
@@ -731,59 +796,74 @@ async function saveCSV() {
   const periodStart = csvData.dateMin || new Date().toISOString().split('T')[0];
   const periodEnd   = csvData.dateMax || periodStart;
 
+  console.log('[saveCSV] client.id:', client.id, '| periodStart:', periodStart, '| periodEnd:', periodEnd, '| posts:', csvData.posts.length);
+
   // 1. Guardar el período
-  const { data: period, error: pErr } = await db.from('metric_periods').insert({
-    client_id:     client.id,
-    period_label:  label,
-    period_start:  periodStart,
-    period_end:    periodEnd,
-    total_posts:   csvData.posts.length,
-    total_reach:   csvData.totals.reach,
-    total_views:   csvData.totals.views,
-    total_likes:   csvData.totals.likes,
-    total_saves:   csvData.totals.saves,
-    total_shares:  csvData.totals.shares,
-    total_comments:csvData.totals.comments,
-    total_follows: csvData.totals.follows,
-  }).select().single();
+  const periodPayload = {
+    client_id:      client.id,
+    period_label:   label,
+    period_start:   periodStart,
+    period_end:     periodEnd,
+    total_posts:    csvData.posts.length,
+    total_reach:    csvData.totals.reach,
+    total_views:    csvData.totals.views,
+    total_likes:    csvData.totals.likes,
+    total_saves:    csvData.totals.saves,
+    total_shares:   csvData.totals.shares,
+    total_comments: csvData.totals.comments,
+    total_follows:  csvData.totals.follows,
+  };
+  console.log('[saveCSV] periodPayload:', JSON.stringify(periodPayload));
+
+  const { data: period, error: pErr } = await db.from('metric_periods').insert(periodPayload).select().single();
 
   if (pErr) {
-    alert('Error guardando período: ' + pErr.message);
+    console.error('[saveCSV] Error período:', pErr);
+    showSaveError(`Error guardando período:\n${pErr.message}\n\nCódigo: ${pErr.code}\nDetalles: ${pErr.details || '—'}\nHint: ${pErr.hint || '—'}`);
     btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
     return;
   }
+  console.log('[saveCSV] Período guardado OK. ID:', period.id);
 
   // 2. Guardar cada publicación
   const toInsert = csvData.posts.map(r => ({
-    client_id: client.id,
-    period_id:  period.id,
-    pub_date:   parseMetaDate(r['Hora de publicación']) || periodStart,
-    post_type:  r['Tipo de publicación'] || null,
-    link:       r['Enlace permanente'] || null,
-    description:r['Descripción'] || null,
-    reach:      toInt(r['Alcance']),
-    views:      toInt(r['Visualizaciones']),
-    likes:      toInt(r['Me gusta']),
-    comments:   toInt(r['Comentarios']),
-    shares:     toInt(r['Veces que se compartió']),
-    saves:      toInt(r['Veces que se guardó']),
-    follows:    toInt(r['Seguimientos']),
+    client_id:   client.id,
+    period_id:   period.id,
+    pub_date:    parseMetaDate(r['Hora de publicación']) || periodStart,
+    post_type:   r['Tipo de publicación'] || null,
+    link:        r['Enlace permanente'] || null,
+    description: r['Descripción'] || null,
+    reach:       toInt(r['Alcance']),
+    views:       toInt(r['Visualizaciones']),
+    likes:       toInt(r['Me gusta']),
+    comments:    toInt(r['Comentarios']),
+    shares:      toInt(r['Veces que se compartió']),
+    saves:       toInt(r['Veces que se guardó']),
+    follows:     toInt(r['Seguimientos']),
   }));
 
-  const { error: postsErr } = await db.from('posts').insert(toInsert);
-  if (postsErr) {
-    alert('Error guardando publicaciones: ' + postsErr.message);
-    console.error(postsErr);
-    btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
-    return;
+  console.log('[saveCSV] Insertando', toInsert.length, 'posts. Primer post:', JSON.stringify(toInsert[0]));
+
+  // Insertar en lotes de 50 para evitar límites
+  const BATCH = 50;
+  for (let i = 0; i < toInsert.length; i += BATCH) {
+    const batch = toInsert.slice(i, i + BATCH);
+    const { error: postsErr } = await db.from('posts').insert(batch);
+    if (postsErr) {
+      console.error('[saveCSV] Error posts lote', i, postsErr);
+      showSaveError(`Error guardando publicaciones (lote ${i}-${i+BATCH}):\n${postsErr.message}\n\nCódigo: ${postsErr.code}\nDetalles: ${postsErr.details || '—'}\nHint: ${postsErr.hint || '—'}`);
+      btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
+      return;
+    }
   }
 
   // 3. Éxito
+  console.log('[saveCSV] ✅ Todo guardado correctamente.');
   csvData = null;
   await loadPeriods();
   btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
-  alert(`✅ Período "${label}" guardado con ${toInsert.length} publicaciones.`);
-  switchTab('resumen');
+  document.getElementById('csv-preview').innerHTML = `<div style="background:#D1FAE5;color:#065F46;padding:14px;border-radius:8px;font-weight:600;">✅ Período "${label}" guardado con ${toInsert.length} publicaciones.</div>`;
+  setTimeout(() => switchTab('resumen'), 1500);
 }
 
 // ═══════════════════════════════════════════
