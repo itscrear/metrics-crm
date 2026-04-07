@@ -8,388 +8,369 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <style>
-  :root {
-    --brand: #7C3AED;
-    --brand-light: #EDE9FE;
-    --brand-dark: #5B21B6;
-    --accent: #F59E0B;
-    --success: #10B981;
-    --danger: #EF4444;
-    --gray-50: #F9FAFB;
-    --gray-100: #F3F4F6;
-    --gray-200: #E5E7EB;
-    --gray-300: #D1D5DB;
-    --gray-500: #6B7280;
-    --gray-700: #374151;
-    --gray-900: #111827;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-50); color: var(--gray-900); }
+:root {
+  --brand: #7C3AED; --brand-light: #EDE9FE; --brand-dark: #5B21B6;
+  --success: #10B981; --danger: #EF4444; --accent: #F59E0B;
+  --gray-50: #F9FAFB; --gray-100: #F3F4F6; --gray-200: #E5E7EB;
+  --gray-300: #D1D5DB; --gray-500: #6B7280; --gray-700: #374151; --gray-900: #111827;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-50); color: var(--gray-900); }
 
-  #auth-screen {
-    min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, var(--brand-dark) 0%, var(--brand) 100%);
-  }
-  .auth-card { background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .auth-logo { text-align: center; margin-bottom: 32px; }
-  .auth-logo h1 { font-size: 28px; font-weight: 800; color: var(--brand); }
-  .auth-logo p { color: var(--gray-500); margin-top: 4px; font-size: 14px; }
+/* AUTH */
+#auth-screen { min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--brand-dark),var(--brand)); }
+.auth-card { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+.auth-logo { text-align:center; margin-bottom:32px; }
+.auth-logo h1 { font-size:28px; font-weight:800; color:var(--brand); }
+.auth-logo p { color:var(--gray-500); font-size:14px; margin-top:4px; }
 
-  .form-group { margin-bottom: 16px; }
-  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
-  .form-group input, .form-group select, .form-group textarea {
-    width: 100%; padding: 10px 14px; border: 1.5px solid var(--gray-200);
-    border-radius: 8px; font-size: 14px; transition: border-color .2s; background: white; color: var(--gray-900);
-  }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--brand); }
+/* FORMS */
+.fg { margin-bottom:16px; }
+.fg label { display:block; font-size:13px; font-weight:600; color:var(--gray-700); margin-bottom:6px; }
+.fg input, .fg select, .fg textarea {
+  width:100%; padding:10px 14px; border:1.5px solid var(--gray-200);
+  border-radius:8px; font-size:14px; background:white; color:var(--gray-900); transition:border-color .2s;
+}
+.fg input:focus, .fg select:focus { outline:none; border-color:var(--brand); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
-  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all .2s; }
-  .btn-primary { background: var(--brand); color: white; }
-  .btn-primary:hover { background: var(--brand-dark); }
-  .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
-  .btn-secondary:hover { background: var(--gray-200); }
-  .btn-danger { background: var(--danger); color: white; }
-  .btn-success { background: var(--success); color: white; }
-  .btn-full { width: 100%; justify-content: center; }
-  .btn-sm { padding: 6px 12px; font-size: 13px; }
-  .error-msg { background: #FEE2E2; color: #B91C1C; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; }
+/* BUTTONS */
+.btn { display:inline-flex; align-items:center; gap:8px; padding:10px 20px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .2s; }
+.btn-p { background:var(--brand); color:white; } .btn-p:hover { background:var(--brand-dark); }
+.btn-s { background:var(--gray-100); color:var(--gray-700); } .btn-s:hover { background:var(--gray-200); }
+.btn-d { background:var(--danger); color:white; }
+.btn-full { width:100%; justify-content:center; }
+.btn-sm { padding:6px 12px; font-size:13px; }
+.btn:disabled { opacity:.6; cursor:not-allowed; }
+.err { background:#FEE2E2; color:#B91C1C; padding:10px 14px; border-radius:8px; font-size:13px; margin-top:12px; }
 
-  #app { display: none; min-height: 100vh; }
-  .topbar { background: white; border-bottom: 1px solid var(--gray-200); padding: 0 24px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-  .topbar-brand { font-size: 18px; font-weight: 800; color: var(--brand); }
-  .topbar-right { display: flex; align-items: center; gap: 12px; }
-  .user-badge { display: flex; align-items: center; gap: 8px; background: var(--brand-light); padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; color: var(--brand); }
-  .role-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700; background: var(--brand); color: white; }
-  .main-container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+/* APP */
+#app { display:none; min-height:100vh; }
+.topbar { background:white; border-bottom:1px solid var(--gray-200); padding:0 24px; height:60px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+.topbar-brand { font-size:18px; font-weight:800; color:var(--brand); }
+.user-badge { display:flex; align-items:center; gap:8px; background:var(--brand-light); padding:6px 12px; border-radius:20px; font-size:13px; font-weight:600; color:var(--brand); }
+.role-badge { font-size:11px; padding:2px 8px; border-radius:10px; font-weight:700; background:var(--brand); color:white; }
+.wrap { max-width:1200px; margin:0 auto; padding:24px; }
 
-  .alert-banner { background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; }
-  .alert-banner h3 { font-size: 14px; font-weight: 700; color: #92400E; margin-bottom: 8px; }
-  .alert-item { font-size: 13px; color: #78350F; padding: 3px 0; }
+/* ALERTS */
+.alert-box { background:#FEF3C7; border:1px solid #FCD34D; border-radius:10px; padding:14px 18px; margin-bottom:20px; }
+.alert-box h3 { font-size:14px; font-weight:700; color:#92400E; margin-bottom:8px; }
+.alert-item { font-size:13px; color:#78350F; padding:3px 0; }
 
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .section-title { font-size: 20px; font-weight: 700; }
-  .clients-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-  .client-card { background: white; border-radius: 12px; border: 1.5px solid var(--gray-200); padding: 20px; cursor: pointer; transition: all .2s; }
-  .client-card:hover { border-color: var(--brand); box-shadow: 0 4px 20px rgba(124,58,237,.1); transform: translateY(-2px); }
-  .client-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
-  .client-meta { font-size: 13px; color: var(--gray-500); }
-  .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-  .status-active { background: var(--success); }
-  .status-inactive { background: var(--gray-300); }
-  .pieces-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: var(--brand-light); color: var(--brand); margin-top: 8px; margin-right: 4px; }
+/* CLIENTS */
+.section-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.section-title { font-size:20px; font-weight:700; }
+.clients-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+.client-card { background:white; border-radius:12px; border:1.5px solid var(--gray-200); padding:20px; cursor:pointer; transition:all .2s; }
+.client-card:hover { border-color:var(--brand); box-shadow:0 4px 20px rgba(124,58,237,.1); transform:translateY(-2px); }
+.client-name { font-size:16px; font-weight:700; margin-bottom:6px; }
+.client-meta { font-size:13px; color:var(--gray-500); }
+.dot { width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+.dot-on { background:var(--success); } .dot-off { background:var(--gray-300); }
+.badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; background:var(--brand-light); color:var(--brand); margin-top:8px; margin-right:4px; }
+.badge-green { background:#D1FAE5; color:#065F46; }
 
-  #client-detail { display: none; }
-  .back-btn { display: flex; align-items: center; gap: 6px; color: var(--gray-500); font-size: 14px; cursor: pointer; margin-bottom: 20px; }
-  .back-btn:hover { color: var(--brand); }
-  .client-header { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; border: 1.5px solid var(--gray-200); }
-  .client-header-top { display: flex; align-items: flex-start; justify-content: space-between; }
-  .client-title { font-size: 24px; font-weight: 800; }
-  .client-subtitle { color: var(--gray-500); font-size: 14px; margin-top: 4px; }
-  .client-actions { display: flex; gap: 8px; }
+/* DETAIL */
+#client-detail { display:none; }
+.back { display:flex; align-items:center; gap:6px; color:var(--gray-500); font-size:14px; cursor:pointer; margin-bottom:20px; }
+.back:hover { color:var(--brand); }
+.client-hdr { background:white; border-radius:12px; padding:24px; margin-bottom:20px; border:1.5px solid var(--gray-200); display:flex; align-items:flex-start; justify-content:space-between; }
+.client-hdr-info h2 { font-size:24px; font-weight:800; }
+.client-hdr-info p { color:var(--gray-500); font-size:14px; margin-top:4px; }
+.client-hdr-actions { display:flex; gap:8px; }
 
-  .tabs { display: flex; gap: 4px; background: var(--gray-100); padding: 4px; border-radius: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-  .tab { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--gray-500); transition: all .2s; border: none; background: transparent; }
-  .tab.active { background: white; color: var(--brand); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
+/* TABS */
+.tabs { display:flex; gap:4px; background:var(--gray-100); padding:4px; border-radius:10px; margin-bottom:20px; flex-wrap:wrap; }
+.tab { padding:8px 16px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; color:var(--gray-500); border:none; background:transparent; transition:all .2s; }
+.tab.active { background:white; color:var(--brand); box-shadow:0 1px 4px rgba(0,0,0,.1); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
 
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .kpi-card { background: white; border-radius: 10px; padding: 16px; border: 1.5px solid var(--gray-200); }
-  .kpi-label { font-size: 12px; color: var(--gray-500); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
-  .kpi-value { font-size: 26px; font-weight: 800; color: var(--brand); margin-top: 4px; }
-  .kpi-trend { font-size: 12px; font-weight: 700; margin-top: 4px; }
-  .trend-up { color: var(--success); }
-  .trend-down { color: var(--danger); }
+/* KPIs */
+.kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+.kpi { background:white; border-radius:10px; padding:16px; border:1.5px solid var(--gray-200); }
+.kpi-label { font-size:12px; color:var(--gray-500); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.kpi-value { font-size:26px; font-weight:800; color:var(--brand); margin-top:4px; }
+.kpi-trend { font-size:12px; font-weight:700; margin-top:4px; }
+.up { color:var(--success); } .down { color:var(--danger); }
 
-  .table-wrap { background: white; border-radius: 12px; border: 1.5px solid var(--gray-200); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; }
-  th { background: var(--gray-50); padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid var(--gray-200); }
-  td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--gray-50); }
-  .link-cell a { color: var(--brand); text-decoration: none; font-weight: 600; }
-  .link-cell a:hover { text-decoration: underline; }
+/* TABLES */
+.tbl-wrap { background:white; border-radius:12px; border:1.5px solid var(--gray-200); overflow:hidden; margin-bottom:20px; }
+table { width:100%; border-collapse:collapse; }
+th { background:var(--gray-50); padding:12px 16px; text-align:left; font-size:12px; font-weight:700; color:var(--gray-500); text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--gray-200); }
+td { padding:12px 16px; font-size:14px; border-bottom:1px solid var(--gray-100); vertical-align:middle; }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:var(--gray-50); }
+.lnk a { color:var(--brand); text-decoration:none; font-weight:600; }
+.lnk a:hover { text-decoration:underline; }
 
-  .chart-wrap { background: white; border-radius: 12px; border: 1.5px solid var(--gray-200); padding: 20px; margin-bottom: 20px; }
-  .chart-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+/* CHART */
+.chart-box { background:white; border-radius:12px; border:1.5px solid var(--gray-200); padding:20px; margin-bottom:20px; }
+.chart-title { font-size:15px; font-weight:700; margin-bottom:16px; }
 
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: center; justify-content: center; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: white; border-radius: 16px; padding: 32px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; position: relative; }
-  .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 24px; }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px; }
-  .close-btn { position: absolute; top: 16px; right: 16px; cursor: pointer; color: var(--gray-500); font-size: 20px; border: none; background: none; }
+/* CARD */
+.card { background:white; border-radius:12px; border:1.5px solid var(--gray-200); padding:20px; margin-bottom:16px; }
+.card h3 { font-size:16px; font-weight:700; margin-bottom:16px; }
 
-  .upload-area { border: 2px dashed var(--gray-300); border-radius: 10px; padding: 40px; text-align: center; cursor: pointer; transition: all .2s; }
-  .upload-area:hover { border-color: var(--brand); background: var(--brand-light); }
-  .upload-area p { color: var(--gray-500); font-size: 14px; margin-top: 8px; }
-  .upload-area .upload-icon { font-size: 40px; }
+/* MODAL */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000; align-items:center; justify-content:center; }
+.overlay.open { display:flex; }
+.modal { background:white; border-radius:16px; padding:32px; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; position:relative; }
+.modal-title { font-size:20px; font-weight:800; margin-bottom:24px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:24px; }
+.close-btn { position:absolute; top:16px; right:16px; cursor:pointer; color:var(--gray-500); font-size:20px; border:none; background:none; }
 
-  .star-btn { background: none; border: none; cursor: pointer; font-size: 20px; transition: transform .2s; }
-  .star-btn:hover { transform: scale(1.2); }
+/* UPLOAD */
+.upload-zone { border:2px dashed var(--gray-300); border-radius:10px; padding:40px; text-align:center; cursor:pointer; transition:all .2s; }
+.upload-zone:hover { border-color:var(--brand); background:var(--brand-light); }
+.upload-zone .icon { font-size:40px; margin-bottom:8px; }
+.upload-zone p { color:var(--gray-500); font-size:14px; margin-top:4px; }
+.preview-box { background:var(--gray-50); border-radius:8px; padding:16px; margin-top:16px; }
+.preview-box h4 { font-size:14px; font-weight:700; margin-bottom:12px; }
+.stat-chip { display:inline-block; background:white; border:1px solid var(--gray-200); border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; margin:4px; }
+.stat-chip span { color:var(--brand); font-size:18px; display:block; }
 
-  .section-card { background: white; border-radius: 12px; border: 1.5px solid var(--gray-200); padding: 20px; margin-bottom: 16px; }
-  .section-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+/* PERIOD CHIPS */
+.period-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.pchip { padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; background:var(--gray-100); color:var(--gray-700); border:none; transition:all .2s; }
+.pchip.active { background:var(--brand); color:white; }
 
-  .period-selector { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-  .period-chip { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; background: var(--gray-100); color: var(--gray-700); border: none; transition: all .2s; }
-  .period-chip.active { background: var(--brand); color: white; }
+/* AI */
+.ai-center { text-align:center; padding:48px 24px; }
+.ai-center h3 { font-size:20px; font-weight:700; margin-bottom:8px; }
+.ai-center p { color:var(--gray-500); font-size:14px; margin-bottom:24px; line-height:1.6; }
+.ai-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-top:16px; }
+.ai-card { background:white; border-radius:12px; border:1.5px solid var(--gray-200); padding:20px; }
+.ai-card-title { font-size:15px; font-weight:700; margin-bottom:12px; }
+.ai-card p { font-size:13px; color:var(--gray-700); line-height:1.6; }
+.ai-card li { font-size:13px; color:var(--gray-700); margin-bottom:6px; line-height:1.5; }
+.ai-summary { background:var(--brand-light); border-radius:12px; padding:20px; margin-bottom:20px; }
+.ai-summary p { font-size:14px; color:var(--brand-dark); line-height:1.7; }
+.tag { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; margin:2px; }
+.tag-g { background:#D1FAE5; color:#065F46; } .tag-r { background:#FEE2E2; color:#991B1B; }
+.tag-b { background:#DBEAFE; color:#1E40AF; } .tag-y { background:#FEF3C7; color:#92400E; }
+.script-list { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
+.script-item { background:white; border:1.5px solid var(--gray-200); border-radius:10px; padding:14px; }
+.script-item h4 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.pb-wrap { background:var(--gray-200); border-radius:10px; height:6px; margin:8px 0; }
+.pb { background:var(--brand); height:6px; border-radius:10px; transition:width .4s; }
+.spinner { display:inline-block; width:18px; height:18px; border:3px solid rgba(255,255,255,.3); border-top-color:white; border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
 
-  .empty-state { text-align: center; padding: 48px 24px; color: var(--gray-500); }
-  .empty-state h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; color: var(--gray-700); }
-
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .loading { text-align: center; padding: 32px; color: var(--gray-500); }
-  .text-sm { font-size: 13px; }
-  .text-muted { color: var(--gray-500); }
-  .mt-8 { margin-top: 8px; }
-  .mt-16 { margin-top: 16px; }
-
-  /* CSV Preview */
-  .csv-preview { background: var(--gray-50); border-radius: 8px; padding: 16px; margin-top: 16px; }
-  .csv-preview h4 { font-size: 14px; font-weight: 700; margin-bottom: 12px; }
-  .csv-stat { display: inline-block; background: white; border: 1px solid var(--gray-200); border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; margin: 4px; }
-  .csv-stat span { color: var(--brand); font-size: 18px; display: block; }
-
-  /* AI */
-  .ai-trigger-wrap { text-align: center; padding: 48px 24px; }
-  .ai-trigger-wrap h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
-  .ai-trigger-wrap p { color: var(--gray-500); font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
-  .ai-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 16px; }
-  .ai-card { background: white; border-radius: 12px; border: 1.5px solid var(--gray-200); padding: 20px; }
-  .ai-card-title { font-size: 15px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-  .ai-card ul { padding-left: 16px; }
-  .ai-card li { font-size: 13px; color: var(--gray-700); margin-bottom: 6px; line-height: 1.5; }
-  .ai-card p { font-size: 13px; color: var(--gray-700); line-height: 1.6; }
-  .ai-summary { background: var(--brand-light); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-  .ai-summary p { font-size: 14px; color: var(--brand-dark); line-height: 1.7; }
-  .ai-tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin: 2px; }
-  .ai-tag-green { background: #D1FAE5; color: #065F46; }
-  .ai-tag-red { background: #FEE2E2; color: #991B1B; }
-  .ai-tag-blue { background: #DBEAFE; color: #1E40AF; }
-  .ai-tag-yellow { background: #FEF3C7; color: #92400E; }
-  .ai-scripts-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
-  .ai-script-item { background: white; border: 1.5px solid var(--gray-200); border-radius: 10px; padding: 14px; }
-  .ai-script-item h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-  .ai-script-item p { font-size: 13px; color: var(--gray-500); }
-  .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,.3); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .progress-bar-wrap { background: var(--gray-200); border-radius: 10px; height: 6px; margin: 8px 0; }
-  .progress-bar { background: var(--brand); height: 6px; border-radius: 10px; transition: width .4s; }
-
-  .post-with-script { border-left: 3px solid var(--success); }
-  .post-no-script { border-left: 3px solid var(--gray-200); }
-  .script-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 700; background: #D1FAE5; color: #065F46; }
+/* MISC */
+.empty { text-align:center; padding:48px 24px; color:var(--gray-500); }
+.empty h3 { font-size:16px; font-weight:600; margin-bottom:8px; color:var(--gray-700); }
+.loading { text-align:center; padding:32px; color:var(--gray-500); }
+.star-btn { background:none; border:none; cursor:pointer; font-size:20px; transition:transform .2s; }
+.star-btn:hover { transform:scale(1.2); }
+.text-sm { font-size:13px; } .text-muted { color:var(--gray-500); }
+.mt8 { margin-top:8px; } .mt16 { margin-top:16px; }
+.flex-row { display:flex; align-items:center; gap:8px; }
 </style>
 </head>
 <body>
 
+<!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-card">
-    <div class="auth-logo">
-      <h1>✦ ItsCrear</h1>
-      <p>Content CRM — Acceso de equipo</p>
-    </div>
-    <div class="form-group">
-      <label>Email</label>
-      <input type="email" id="auth-email" placeholder="tu@email.com">
-    </div>
-    <div class="form-group">
-      <label>Contraseña</label>
-      <input type="password" id="auth-password" placeholder="••••••••">
-    </div>
-    <button class="btn btn-primary btn-full" onclick="login()">Iniciar sesión</button>
-    <div id="auth-error"></div>
+    <div class="auth-logo"><h1>✦ ItsCrear</h1><p>Content CRM — Acceso de equipo</p></div>
+    <div class="fg"><label>Email</label><input type="email" id="a-email" placeholder="tu@email.com"></div>
+    <div class="fg"><label>Contraseña</label><input type="password" id="a-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')login()"></div>
+    <button class="btn btn-p btn-full" onclick="login()">Iniciar sesión</button>
+    <div id="a-err"></div>
   </div>
 </div>
 
+<!-- APP -->
 <div id="app">
   <div class="topbar">
     <div class="topbar-brand">✦ ItsCrear CRM</div>
-    <div class="topbar-right">
-      <div class="user-badge">
-        <span id="user-email-display"></span>
-        <span class="role-badge" id="role-display"></span>
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="logout()">Salir</button>
+    <div class="flex-row">
+      <div class="user-badge"><span id="u-email"></span><span class="role-badge" id="u-role"></span></div>
+      <button class="btn btn-s btn-sm" onclick="logout()">Salir</button>
     </div>
   </div>
+  <div class="wrap">
+    <div id="alerts-box"></div>
 
-  <div class="main-container">
-    <div id="alerts-container"></div>
-
+    <!-- DASHBOARD -->
     <div id="dashboard">
-      <div class="section-header">
+      <div class="section-hdr">
         <h2 class="section-title">Clientes</h2>
-        <button class="btn btn-primary" id="add-client-btn" onclick="openAddClient()" style="display:none">+ Nuevo cliente</button>
+        <button class="btn btn-p" id="btn-add-client" onclick="openAddClient()" style="display:none">+ Nuevo cliente</button>
       </div>
-      <div class="clients-grid" id="clients-grid">
-        <div class="loading">Cargando clientes...</div>
-      </div>
+      <div class="clients-grid" id="clients-grid"><div class="loading">Cargando...</div></div>
     </div>
 
+    <!-- CLIENT DETAIL -->
     <div id="client-detail">
-      <div class="back-btn" onclick="showDashboard()">← Volver a clientes</div>
-      <div class="client-header">
-        <div class="client-header-top">
-          <div>
-            <div class="client-title" id="detail-name"></div>
-            <div class="client-subtitle" id="detail-meta"></div>
-          </div>
-          <div class="client-actions" id="detail-actions"></div>
+      <div class="back" onclick="showDashboard()">← Volver a clientes</div>
+      <div class="client-hdr">
+        <div class="client-hdr-info">
+          <h2 id="d-name"></h2>
+          <p id="d-meta"></p>
         </div>
+        <div class="client-hdr-actions" id="d-actions"></div>
       </div>
-
       <div class="tabs" id="tabs-bar">
         <button class="tab active" onclick="switchTab('resumen')">📊 Resumen</button>
         <button class="tab" onclick="switchTab('historial')">📅 Historial</button>
         <button class="tab" onclick="switchTab('publicaciones')">📱 Publicaciones</button>
         <button class="tab" onclick="switchTab('estrellas')">⭐ Estrellas</button>
-        <button class="tab" onclick="switchTab('ia')" id="btn-tab-ia" style="display:none">✨ Análisis IA</button>
+        <button class="tab" onclick="switchTab('ia')" id="btn-ia" style="display:none">✨ Análisis IA</button>
         <button class="tab" onclick="switchTab('cargar')">+ Cargar métricas</button>
       </div>
-
-      <div class="tab-content active" id="tab-resumen"><div id="resumen-content"><div class="loading">Cargando...</div></div></div>
-      <div class="tab-content" id="tab-historial"><div id="historial-content"></div></div>
-      <div class="tab-content" id="tab-publicaciones"><div id="publicaciones-content"></div></div>
-      <div class="tab-content" id="tab-estrellas"><div id="estrellas-content"></div></div>
-      <div class="tab-content" id="tab-ia"><div id="ia-content"></div></div>
-      <div class="tab-content" id="tab-cargar"><div id="cargar-content"></div></div>
+      <div class="tab-content active" id="tab-resumen"><div id="c-resumen"></div></div>
+      <div class="tab-content" id="tab-historial"><div id="c-historial"></div></div>
+      <div class="tab-content" id="tab-publicaciones"><div id="c-publicaciones"></div></div>
+      <div class="tab-content" id="tab-estrellas"><div id="c-estrellas"></div></div>
+      <div class="tab-content" id="tab-ia"><div id="c-ia"></div></div>
+      <div class="tab-content" id="tab-cargar"><div id="c-cargar"></div></div>
     </div>
   </div>
 </div>
 
-<!-- MODAL: Add/Edit Client -->
-<div class="modal-overlay" id="modal-client">
+<!-- MODAL CLIENTE -->
+<div class="overlay" id="modal-client">
   <div class="modal">
     <button class="close-btn" onclick="closeModal('modal-client')">✕</button>
-    <div class="modal-title" id="modal-client-title">Nuevo cliente</div>
-    <div class="grid-2">
-      <div class="form-group"><label>Nombre *</label><input type="text" id="c-name" placeholder="Ej: Mateo García"></div>
-      <div class="form-group"><label>@usuario de Instagram</label><input type="text" id="c-handle" placeholder="@usuario"></div>
+    <div class="modal-title" id="mc-title">Nuevo cliente</div>
+    <div class="grid2">
+      <div class="fg"><label>Nombre *</label><input type="text" id="mc-name"></div>
+      <div class="fg"><label>@Instagram</label><input type="text" id="mc-handle" placeholder="@usuario"></div>
     </div>
-    <div class="grid-2">
-      <div class="form-group"><label>Nicho / Rubro</label><input type="text" id="c-niche" placeholder="Ej: Fitness, Gastronomía"></div>
-      <div class="form-group"><label>Piezas por mes</label>
-        <select id="c-pieces">
-          <option value="15">15 piezas / mes</option>
-          <option value="20">20 piezas / mes</option>
-          <option value="30">30 piezas / mes (quincenal)</option>
+    <div class="grid2">
+      <div class="fg"><label>Nicho</label><input type="text" id="mc-niche" placeholder="Ej: Fitness"></div>
+      <div class="fg"><label>Piezas por mes</label>
+        <select id="mc-pieces">
+          <option value="15">15 / mes</option>
+          <option value="20">20 / mes</option>
+          <option value="30">30 / mes (quincenal)</option>
         </select>
       </div>
     </div>
-    <div class="grid-2">
-      <div class="form-group"><label>Fecha inicio</label><input type="date" id="c-start"></div>
-      <div class="form-group"><label>Estado</label>
-        <select id="c-active"><option value="true">Activo</option><option value="false">Inactivo</option></select>
+    <div class="grid2">
+      <div class="fg"><label>Fecha inicio</label><input type="date" id="mc-start"></div>
+      <div class="fg"><label>Estado</label>
+        <select id="mc-active"><option value="true">Activo</option><option value="false">Inactivo</option></select>
       </div>
     </div>
-    <div class="form-group">
+    <div class="fg">
       <label>Notion Database ID <span class="text-muted">(para análisis IA)</span></label>
-      <input type="text" id="c-notion-id" placeholder="29d5c1f273f281ebb8a0dee3dc5d6b81">
-      <div class="text-sm text-muted mt-8">Lo encontrás en la URL de tu base de datos de Notion</div>
+      <input type="text" id="mc-notion" placeholder="29d5c1f273f281ebb8a0dee3dc5d6b81">
+      <div class="text-sm text-muted mt8">Lo encontrás en la URL de tu base de datos de Notion</div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-client')">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveClient()">Guardar cliente</button>
+      <button class="btn btn-s" onclick="closeModal('modal-client')">Cancelar</button>
+      <button class="btn btn-p" onclick="saveClient()">Guardar</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: Confirm -->
-<div class="modal-overlay" id="modal-confirm">
+<!-- MODAL CONFIRMAR -->
+<div class="overlay" id="modal-confirm">
   <div class="modal" style="max-width:400px">
     <div class="modal-title">¿Estás segura?</div>
-    <p class="text-sm" id="confirm-text"></p>
+    <p class="text-sm" id="confirm-msg"></p>
     <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
-      <button class="btn btn-danger" id="confirm-action-btn">Eliminar</button>
+      <button class="btn btn-s" onclick="closeModal('modal-confirm')">Cancelar</button>
+      <button class="btn btn-d" id="confirm-btn">Eliminar</button>
     </div>
   </div>
 </div>
 
 <script>
-const SUPABASE_URL = 'https://qpvgvzjgcwosjwnblydz.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwdmd2empnY3dvc2p3bmJseWR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNjI3NDIsImV4cCI6MjA4OTYzODc0Mn0.bBqUQV9OqF5-OwDyc_5agn3MMkYjUpWXa_i7hKaR5kY';
-const NOTION_TOKEN = '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';
-const CLAUDE_KEY = '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';
-const NOTION_VERSION = '2022-06-28';
+// ═══════════════════════════════════════════
+// CONFIG — credenciales
+// ═══════════════════════════════════════════
+const SB_URL  = 'https://qpvgvzjgcwosjwnblydz.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwdmd2empnY3dvc2p3bmJseWR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNjI3NDIsImV4cCI6MjA4OTYzODc0Mn0.bBqUQV9OqF5-OwDyc_5agn3MMkYjUpWXa_i7hKaR5kY';
+const NOTION  = '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';
+const CLAUDE  = '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';
+const EDGE_FN = `${SB_URL}/functions/v1/quick-processor`;
 
 const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+const db = createClient(SB_URL, SB_KEY);
 
-let currentUser = null, currentRole = null, currentClient = null;
-let clients = [], currentPeriods = [], selectedPeriodId = null;
-let editingClientId = null, evolutionChart = null;
-let parsedCSVData = null;
+// ═══════════════════════════════════════════
+// ESTADO GLOBAL
+// ═══════════════════════════════════════════
+let user = null, role = null, client = null;
+let clients = [], periods = [], selPeriod = null, editId = null;
+let chartInst = null, csvData = null;
 
-// ===================== AUTH =====================
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
 async function login() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const errEl = document.getElementById('auth-error');
+  const email = document.getElementById('a-email').value.trim();
+  const pass  = document.getElementById('a-pass').value;
+  const errEl = document.getElementById('a-err');
   errEl.innerHTML = '';
-  const { data, error } = await db.auth.signInWithPassword({ email, password });
-  if (error) { errEl.innerHTML = `<div class="error-msg">${error.message}</div>`; return; }
-  await initApp(data.user);
+  const { data, error } = await db.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.innerHTML = `<div class="err">${error.message}</div>`; return; }
+  await boot(data.user);
 }
 
 async function logout() { await db.auth.signOut(); location.reload(); }
 
-async function initApp(user) {
-  currentUser = user;
-  const { data: profile } = await db.from('profiles').select('role').eq('id', user.id).single();
-  currentRole = profile?.role || 'editor';
+async function boot(u) {
+  user = u;
+  const { data: p } = await db.from('profiles').select('role').eq('id', u.id).single();
+  role = p?.role || 'editor';
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('user-email-display').textContent = user.email.split('@')[0];
-  document.getElementById('role-display').textContent = currentRole === 'admin' ? 'Admin' : 'Editor';
-  if (currentRole === 'admin') document.getElementById('add-client-btn').style.display = 'flex';
+  document.getElementById('u-email').textContent = u.email.split('@')[0];
+  document.getElementById('u-role').textContent = role === 'admin' ? 'Admin' : 'Editor';
+  if (role === 'admin') document.getElementById('btn-add-client').style.display = 'flex';
   await loadClients();
-  await checkAlerts();
+  checkAlerts();
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await db.auth.getSession();
-  if (session?.user) await initApp(session.user);
+  if (session?.user) await boot(session.user);
 });
 
-// ===================== CLIENTS =====================
+// ═══════════════════════════════════════════
+// CLIENTS
+// ═══════════════════════════════════════════
 async function loadClients() {
-  const { data } = await db.from('clients').select('*').order('name');
+  const { data, error } = await db.from('clients').select('*').order('name');
+  if (error) { console.error('loadClients:', error); return; }
   clients = data || [];
-  renderClientsGrid();
+  renderGrid();
 }
 
-function renderClientsGrid() {
-  const grid = document.getElementById('clients-grid');
+function renderGrid() {
+  const el = document.getElementById('clients-grid');
   if (!clients.length) {
-    grid.innerHTML = '<div class="empty-state"><h3>No hay clientes todavía</h3><p>Hacé clic en "Nuevo cliente" para empezar</p></div>';
+    el.innerHTML = '<div class="empty"><h3>No hay clientes</h3><p>Hacé clic en "+ Nuevo cliente" para empezar</p></div>';
     return;
   }
-  grid.innerHTML = clients.map(c => `
+  el.innerHTML = clients.map(c => `
     <div class="client-card" onclick="openClient('${c.id}')">
-      <div class="client-name"><span class="status-dot ${c.active ? 'status-active' : 'status-inactive'}"></span>${c.name}</div>
-      <div class="client-meta">${c.handle || '—'} · ${c.niche || '—'}</div>
-      <div style="margin-top:8px">
-        <span class="pieces-badge">${c.pieces_per_month} piezas/mes</span>
-        ${c.notion_database_id ? '<span class="pieces-badge" style="background:#D1FAE5;color:#065F46">✦ IA lista</span>' : ''}
+      <div class="client-name"><span class="dot ${c.active?'dot-on':'dot-off'}"></span>${c.name}</div>
+      <div class="client-meta">${c.handle||'—'} · ${c.niche||'—'}</div>
+      <div class="mt8">
+        <span class="badge">${c.pieces_per_month} piezas/mes</span>
+        ${c.notion_database_id ? '<span class="badge badge-green">✦ IA lista</span>' : ''}
       </div>
     </div>`).join('');
 }
 
 async function openClient(id) {
-  currentClient = clients.find(c => c.id === id);
+  client = clients.find(c => c.id === id);
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('client-detail').style.display = 'block';
-  document.getElementById('alerts-container').style.display = 'none';
-  document.getElementById('detail-name').textContent = currentClient.name;
-  document.getElementById('detail-meta').textContent =
-    `${currentClient.handle || ''} · ${currentClient.niche || ''} · ${currentClient.pieces_per_month} piezas/mes · Desde ${fmtDate(currentClient.start_date)}`;
-  document.getElementById('detail-actions').innerHTML = currentRole === 'admin'
-    ? `<button class="btn btn-secondary btn-sm" onclick="openEditClient()">✏️ Editar</button>
-       <button class="btn btn-danger btn-sm" onclick="confirmDeleteClient()">🗑️ Eliminar</button>` : '';
-  document.getElementById('btn-tab-ia').style.display = 'block';
+  document.getElementById('alerts-box').style.display = 'none';
+  document.getElementById('d-name').textContent = client.name;
+  document.getElementById('d-meta').textContent =
+    [client.handle, client.niche, `${client.pieces_per_month} piezas/mes`, `Desde ${fmtDate(client.start_date)}`].filter(Boolean).join(' · ');
+  document.getElementById('d-actions').innerHTML = role === 'admin'
+    ? `<button class="btn btn-s btn-sm" onclick="openEditClient()">✏️ Editar</button>
+       <button class="btn btn-d btn-sm" onclick="confirmDel()">🗑️ Eliminar</button>` : '';
+  document.getElementById('btn-ia').style.display = client.notion_database_id ? 'block' : 'none';
   // Reset tabs
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -402,72 +383,80 @@ async function openClient(id) {
 function showDashboard() {
   document.getElementById('client-detail').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
-  document.getElementById('alerts-container').style.display = 'block';
-  currentClient = null; parsedCSVData = null;
+  document.getElementById('alerts-box').style.display = 'block';
+  client = null; csvData = null; selPeriod = null;
 }
 
-// ===================== CLIENT CRUD =====================
+// ═══════════════════════════════════════════
+// CLIENT CRUD
+// ═══════════════════════════════════════════
 function openAddClient() {
-  editingClientId = null;
-  document.getElementById('modal-client-title').textContent = 'Nuevo cliente';
-  ['c-name','c-handle','c-niche','c-notion-id'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('c-pieces').value = '15';
-  document.getElementById('c-active').value = 'true';
-  document.getElementById('c-start').value = new Date().toISOString().split('T')[0];
+  editId = null;
+  document.getElementById('mc-title').textContent = 'Nuevo cliente';
+  ['mc-name','mc-handle','mc-niche','mc-notion'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('mc-pieces').value = '15';
+  document.getElementById('mc-active').value = 'true';
+  document.getElementById('mc-start').value = new Date().toISOString().split('T')[0];
   openModal('modal-client');
 }
 
 function openEditClient() {
-  editingClientId = currentClient.id;
-  document.getElementById('modal-client-title').textContent = 'Editar cliente';
-  document.getElementById('c-name').value = currentClient.name || '';
-  document.getElementById('c-handle').value = currentClient.handle || '';
-  document.getElementById('c-niche').value = currentClient.niche || '';
-  document.getElementById('c-pieces').value = currentClient.pieces_per_month || 15;
-  document.getElementById('c-active').value = currentClient.active ? 'true' : 'false';
-  document.getElementById('c-start').value = currentClient.start_date || '';
-  document.getElementById('c-notion-id').value = currentClient.notion_database_id || '';
+  editId = client.id;
+  document.getElementById('mc-title').textContent = 'Editar cliente';
+  document.getElementById('mc-name').value = client.name || '';
+  document.getElementById('mc-handle').value = client.handle || '';
+  document.getElementById('mc-niche').value = client.niche || '';
+  document.getElementById('mc-pieces').value = client.pieces_per_month || 15;
+  document.getElementById('mc-active').value = client.active ? 'true' : 'false';
+  document.getElementById('mc-start').value = client.start_date || '';
+  document.getElementById('mc-notion').value = client.notion_database_id || '';
   openModal('modal-client');
 }
 
 async function saveClient() {
   const payload = {
-    name: document.getElementById('c-name').value.trim(),
-    handle: document.getElementById('c-handle').value.trim(),
-    niche: document.getElementById('c-niche').value.trim(),
-    pieces_per_month: parseInt(document.getElementById('c-pieces').value),
-    active: document.getElementById('c-active').value === 'true',
-    start_date: document.getElementById('c-start').value,
-    notion_database_id: document.getElementById('c-notion-id').value.trim() || null,
+    name: document.getElementById('mc-name').value.trim(),
+    handle: document.getElementById('mc-handle').value.trim() || null,
+    niche: document.getElementById('mc-niche').value.trim() || null,
+    pieces_per_month: parseInt(document.getElementById('mc-pieces').value),
+    active: document.getElementById('mc-active').value === 'true',
+    start_date: document.getElementById('mc-start').value || null,
+    notion_database_id: document.getElementById('mc-notion').value.trim() || null,
   };
   if (!payload.name) { alert('El nombre es obligatorio'); return; }
-  if (editingClientId) {
-    await db.from('clients').update(payload).eq('id', editingClientId);
-    currentClient = { ...currentClient, ...payload };
-    document.getElementById('detail-name').textContent = currentClient.name;
+  let err;
+  if (editId) {
+    ({ error: err } = await db.from('clients').update(payload).eq('id', editId));
+    if (!err) { client = { ...client, ...payload }; document.getElementById('d-name').textContent = client.name; document.getElementById('btn-ia').style.display = client.notion_database_id ? 'block' : 'none'; }
   } else {
-    await db.from('clients').insert(payload);
+    ({ error: err } = await db.from('clients').insert(payload));
   }
+  if (err) { alert('Error: ' + err.message); return; }
   closeModal('modal-client');
   await loadClients();
 }
 
-function confirmDeleteClient() {
-  document.getElementById('confirm-text').textContent = `¿Eliminar a ${currentClient.name}? Se borrarán todos sus períodos y publicaciones.`;
-  document.getElementById('confirm-action-btn').onclick = async () => {
-    await db.from('clients').delete().eq('id', currentClient.id);
+function confirmDel() {
+  document.getElementById('confirm-msg').textContent = `¿Eliminar a ${client.name}? Se borrarán todos sus períodos y publicaciones.`;
+  document.getElementById('confirm-btn').onclick = async () => {
+    await db.from('clients').delete().eq('id', client.id);
     closeModal('modal-confirm'); showDashboard(); await loadClients();
   };
   openModal('modal-confirm');
 }
 
-// ===================== PERIODS =====================
+// ═══════════════════════════════════════════
+// PERIODS
+// ═══════════════════════════════════════════
 async function loadPeriods() {
-  const { data } = await db.from('metric_periods').select('*').eq('client_id', currentClient.id).order('period_label', { ascending: false });
-  currentPeriods = data || [];
+  const { data, error } = await db.from('metric_periods').select('*').eq('client_id', client.id).order('period_start', { ascending: false });
+  if (error) { console.error('loadPeriods:', error); return; }
+  periods = data || [];
 }
 
-// ===================== TABS =====================
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -475,96 +464,96 @@ function switchTab(name) {
     if (t.getAttribute('onclick') === `switchTab('${name}')`) t.classList.add('active');
   });
   document.getElementById(`tab-${name}`).classList.add('active');
-  if (name === 'resumen') renderResumen();
-  if (name === 'historial') renderHistorial();
+  if (name === 'resumen')      renderResumen();
+  if (name === 'historial')    renderHistorial();
   if (name === 'publicaciones') renderPublicaciones();
-  if (name === 'estrellas') renderEstrellas();
-  if (name === 'ia') renderIATab();
-  if (name === 'cargar') renderCargarTab();
+  if (name === 'estrellas')    renderEstrellas();
+  if (name === 'ia')           renderIA();
+  if (name === 'cargar')       renderCargar();
 }
 
-// ===================== RESUMEN =====================
+// ═══════════════════════════════════════════
+// RESUMEN
+// ═══════════════════════════════════════════
 async function renderResumen() {
-  const el = document.getElementById('resumen-content');
-  if (!currentPeriods.length) {
-    el.innerHTML = '<div class="empty-state"><h3>Sin métricas cargadas</h3><p>Usá el tab "+ Cargar métricas" para subir el CSV de Meta Business Suite.</p></div>';
+  const el = document.getElementById('c-resumen');
+  if (!periods.length) {
+    el.innerHTML = '<div class="empty"><h3>Sin métricas todavía</h3><p>Usá el tab "+ Cargar métricas" para subir el CSV de Meta Business Suite.</p></div>';
     return;
   }
-  const latest = currentPeriods[0];
-  const prev = currentPeriods[1];
-  const { data: posts } = await db.from('posts').select('*').eq('period_id', latest.id).order('likes', { ascending: false }).order('saves', { ascending: false });
+  const last = periods[0];
+  const prev = periods[1];
+  const { data: posts } = await db.from('posts').select('*').eq('period_id', last.id).order('likes', { ascending: false });
 
-  const trend = (curr, p) => {
-    if (!p || p === 0) return '';
-    const d = ((curr - p) / p * 100).toFixed(1);
-    return d > 0 ? `<div class="kpi-trend trend-up">▲ ${d}%</div>` : `<div class="kpi-trend trend-down">▼ ${Math.abs(d)}%</div>`;
+  const tr = (a, b) => {
+    if (!b || b === 0) return '';
+    const d = ((a - b) / b * 100).toFixed(1);
+    return d > 0 ? `<div class="kpi-trend up">▲ ${d}%</div>` : `<div class="kpi-trend down">▼ ${Math.abs(d)}%</div>`;
   };
 
   el.innerHTML = `
-    <div style="margin-bottom:12px;color:var(--gray-500);font-size:13px">Período: <strong>${latest.period_label}</strong> · ${posts?.length || 0} publicaciones</div>
+    <div class="text-sm text-muted" style="margin-bottom:12px">Período: <strong>${last.period_label}</strong> · ${posts?.length||0} publicaciones</div>
     <div class="kpi-grid">
-      ${kpi('Alcance', fmt(latest.reach), trend(latest.reach, prev?.reach))}
-      ${kpi('Impresiones', fmt(latest.impressions), trend(latest.impressions, prev?.impressions))}
-      ${kpi('Interacciones', fmt(latest.interactions), trend(latest.interactions, prev?.interactions))}
-      ${kpi('Seg. nuevos', fmt(latest.new_followers), trend(latest.new_followers, prev?.new_followers))}
-      ${kpi('Guardados', fmt(latest.saves), trend(latest.saves, prev?.saves))}
-      ${kpi('Compartidos', fmt(latest.shares), trend(latest.shares, prev?.shares))}
-      ${kpi('Visualizaciones', fmt(latest.impressions), '')}
-      ${kpi('Piezas', latest.total_posts || posts?.length || '—', '')}
+      ${K('Alcance', last.total_reach, tr(last.total_reach, prev?.total_reach))}
+      ${K('Visualizaciones', last.total_views, tr(last.total_views, prev?.total_views))}
+      ${K('Me gusta', last.total_likes, tr(last.total_likes, prev?.total_likes))}
+      ${K('Guardados', last.total_saves, tr(last.total_saves, prev?.total_saves))}
+      ${K('Compartidos', last.total_shares, tr(last.total_shares, prev?.total_shares))}
+      ${K('Comentarios', last.total_comments, tr(last.total_comments, prev?.total_comments))}
+      ${K('Seguimientos', last.total_follows, tr(last.total_follows, prev?.total_follows))}
+      ${K('Piezas', last.total_posts, '')}
     </div>
-    ${posts?.length ? topPostsHTML(posts.slice(0, 5)) : ''}`;
+    ${posts?.length ? topPosts(posts.slice(0,5)) : ''}`;
 }
 
-function kpi(label, value, trend = '') {
-  return `<div class="kpi-card"><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div>${trend}</div>`;
+function K(label, val, trend='') {
+  return `<div class="kpi"><div class="kpi-label">${label}</div><div class="kpi-value">${N(val)}</div>${trend}</div>`;
+}
+function topPosts(posts) {
+  return `<div class="chart-box"><div class="chart-title">🏆 Top publicaciones</div>
+    <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
+    <tbody>${posts.map((p,i)=>`<tr>
+      <td>${i+1}</td>
+      <td>${(p.description||'—').slice(0,55)}${p.description?.length>55?'…':''}</td>
+      <td>${p.post_type||'—'}</td>
+      <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
+      <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
+    </tr>`).join('')}</tbody></table></div></div>`;
 }
 
-function topPostsHTML(posts) {
-  return `<div class="chart-wrap"><div class="chart-title">🏆 Top publicaciones</div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>#</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
-      <tbody>${posts.map((p, i) => `<tr>
-        <td>${i+1}</td><td>${p.description?.slice(0,60) || '—'}${p.description?.length > 60 ? '…' : ''}</td>
-        <td>${p.post_type || '—'}</td><td>${fmt(p.likes)}</td><td>${fmt(p.saves)}</td><td>${fmt(p.reach)}</td>
-        <td class="link-cell">${p.url ? `<a href="${p.url}" target="_blank">Ver →</a>` : '—'}</td>
-      </tr>`).join('')}</tbody>
-    </table></div></div>`;
-}
-
-// ===================== HISTORIAL =====================
+// ═══════════════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════════════
 async function renderHistorial() {
-  const el = document.getElementById('historial-content');
-  if (!currentPeriods.length) { el.innerHTML = '<div class="empty-state"><h3>Sin historial</h3></div>'; return; }
-  const reversed = [...currentPeriods].reverse();
+  const el = document.getElementById('c-historial');
+  if (!periods.length) { el.innerHTML = '<div class="empty"><h3>Sin historial</h3></div>'; return; }
+  const rev = [...periods].reverse();
   el.innerHTML = `
-    <div class="chart-wrap">
-      <div class="chart-title">Evolución de métricas</div>
-      <canvas id="evolution-chart" height="80"></canvas>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Período</th><th>Alcance</th><th>Impresiones</th><th>Interacciones</th><th>Seg. nuevos</th><th>Guardados</th><th>Compartidos</th>${currentRole==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${currentPeriods.map(p => `<tr>
+    <div class="chart-box"><div class="chart-title">Evolución de métricas</div><canvas id="ev-chart" height="80"></canvas></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Período</th><th>Alcance</th><th>Visualizaciones</th><th>Me gusta</th><th>Guardados</th><th>Compartidos</th><th>Seguimientos</th>${role==='admin'?'<th></th>':''}</tr></thead>
+      <tbody>${periods.map(p=>`<tr>
         <td><strong>${p.period_label}</strong></td>
-        <td>${fmt(p.reach)}</td><td>${fmt(p.impressions)}</td><td>${fmt(p.interactions)}</td>
-        <td>${fmt(p.new_followers)}</td><td>${fmt(p.saves)}</td><td>${fmt(p.shares)}</td>
-        ${currentRole==='admin'?`<td><button class="btn btn-secondary btn-sm" onclick="confirmDeletePeriod('${p.id}','${p.period_label}')">🗑️</button></td>`:''}
+        <td>${N(p.total_reach)}</td><td>${N(p.total_views)}</td><td>${N(p.total_likes)}</td>
+        <td>${N(p.total_saves)}</td><td>${N(p.total_shares)}</td><td>${N(p.total_follows)}</td>
+        ${role==='admin'?`<td><button class="btn btn-s btn-sm" onclick="delPeriod('${p.id}','${p.period_label}')">🗑️</button></td>`:''}
       </tr>`).join('')}</tbody>
     </table></div>`;
-  if (evolutionChart) evolutionChart.destroy();
-  const ctx = document.getElementById('evolution-chart').getContext('2d');
-  evolutionChart = new Chart(ctx, { type: 'line', data: {
-    labels: reversed.map(p => p.period_label),
-    datasets: [
-      { label: 'Alcance', data: reversed.map(p => p.reach||0), borderColor: '#7C3AED', tension: .4, fill: false },
-      { label: 'Interacciones', data: reversed.map(p => p.interactions||0), borderColor: '#10B981', tension: .4, fill: false },
-      { label: 'Guardados', data: reversed.map(p => p.saves||0), borderColor: '#F59E0B', tension: .4, fill: false },
+  if (chartInst) chartInst.destroy();
+  const ctx = document.getElementById('ev-chart').getContext('2d');
+  chartInst = new Chart(ctx, { type:'line', data:{
+    labels: rev.map(p=>p.period_label),
+    datasets:[
+      {label:'Alcance', data:rev.map(p=>p.total_reach||0), borderColor:'#7C3AED', tension:.4, fill:false},
+      {label:'Likes', data:rev.map(p=>p.total_likes||0), borderColor:'#10B981', tension:.4, fill:false},
+      {label:'Guardados', data:rev.map(p=>p.total_saves||0), borderColor:'#F59E0B', tension:.4, fill:false},
     ]
-  }, options: { responsive: true, plugins: { legend: { position: 'top' } } } });
+  }, options:{responsive:true, plugins:{legend:{position:'top'}}} });
 }
 
-function confirmDeletePeriod(id, label) {
-  document.getElementById('confirm-text').textContent = `¿Eliminar el período "${label}" y todas sus publicaciones?`;
-  document.getElementById('confirm-action-btn').onclick = async () => {
+function delPeriod(id, label) {
+  document.getElementById('confirm-msg').textContent = `¿Eliminar el período "${label}" y todas sus publicaciones?`;
+  document.getElementById('confirm-btn').onclick = async () => {
     await db.from('posts').delete().eq('period_id', id);
     await db.from('metric_periods').delete().eq('id', id);
     closeModal('modal-confirm');
@@ -573,403 +562,386 @@ function confirmDeletePeriod(id, label) {
   openModal('modal-confirm');
 }
 
-// ===================== PUBLICACIONES =====================
+// ═══════════════════════════════════════════
+// PUBLICACIONES
+// ═══════════════════════════════════════════
 async function renderPublicaciones() {
-  const el = document.getElementById('publicaciones-content');
-  if (!currentPeriods.length) { el.innerHTML = '<div class="empty-state"><h3>Sin publicaciones</h3></div>'; return; }
-  if (!selectedPeriodId) selectedPeriodId = currentPeriods[0].id;
+  const el = document.getElementById('c-publicaciones');
+  if (!periods.length) { el.innerHTML = '<div class="empty"><h3>Sin publicaciones</h3></div>'; return; }
+  if (!selPeriod) selPeriod = periods[0].id;
   el.innerHTML = `
-    <div class="period-selector">${currentPeriods.map(p => `
-      <button class="period-chip ${selectedPeriodId===p.id?'active':''}" onclick="selectPeriodPubs('${p.id}')">${p.period_label}</button>`).join('')}
+    <div class="period-bar">${periods.map(p=>`
+      <button class="pchip ${selPeriod===p.id?'active':''}" onclick="selP('${p.id}')">${p.period_label}</button>`).join('')}
     </div>
-    <div id="pubs-table-wrap"><div class="loading">Cargando...</div></div>`;
-  await loadPubsForPeriod(selectedPeriodId);
+    <div id="pubs-wrap"><div class="loading">Cargando...</div></div>`;
+  await loadPubs(selPeriod);
 }
 
-async function selectPeriodPubs(id) {
-  selectedPeriodId = id;
-  document.querySelectorAll('.period-chip').forEach(c =>
-    c.classList.toggle('active', c.getAttribute('onclick') === `selectPeriodPubs('${id}')`));
-  await loadPubsForPeriod(id);
+async function selP(id) {
+  selPeriod = id;
+  document.querySelectorAll('.pchip').forEach(c => c.classList.toggle('active', c.getAttribute('onclick')===`selP('${id}')`));
+  await loadPubs(id);
 }
 
-async function loadPubsForPeriod(periodId) {
-  const { data: posts } = await db.from('posts').select('*').eq('period_id', periodId).order('likes', { ascending: false });
-  const wrap = document.getElementById('pubs-table-wrap');
-  if (!posts?.length) { wrap.innerHTML = '<div class="empty-state"><h3>Sin publicaciones en este período</h3></div>'; return; }
-  wrap.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>⭐</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Guion</th><th>Link</th></tr></thead>
-    <tbody>${posts.map(p => `<tr class="${p.script_content ? 'post-with-script' : 'post-no-script'}">
-      <td><button class="star-btn" onclick="toggleStar('${p.id}',${p.is_star},this)">${p.is_star?'⭐':'☆'}</button></td>
+async function loadPubs(pid) {
+  const { data: posts, error } = await db.from('posts').select('*').eq('period_id', pid).order('likes', { ascending: false });
+  if (error) { console.error('loadPubs:', error); }
+  const wrap = document.getElementById('pubs-wrap');
+  if (!posts?.length) { wrap.innerHTML = '<div class="empty"><h3>Sin publicaciones en este período</h3></div>'; return; }
+  wrap.innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>⭐</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Visualiz.</th><th>Coment.</th><th>Compartid.</th><th>Link</th></tr></thead>
+    <tbody>${posts.map(p=>`<tr>
+      <td><button class="star-btn" onclick="star('${p.id}',${p.is_star},this)">${p.is_star?'⭐':'☆'}</button></td>
       <td>${p.pub_date||'—'}</td>
-      <td>${p.description?.slice(0,50)||'—'}${p.description?.length>50?'…':''}</td>
+      <td>${(p.description||'—').slice(0,45)}${p.description?.length>45?'…':''}</td>
       <td>${p.post_type||'—'}</td>
-      <td>${fmt(p.likes)}</td><td>${fmt(p.saves)}</td><td>${fmt(p.reach)}</td>
-      <td>${p.script_content ? '<span class="script-badge">✓ Guion</span>' : '<span style="color:var(--gray-300)">—</span>'}</td>
-      <td class="link-cell">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
+      <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
+      <td>${N(p.views)}</td><td>${N(p.comments)}</td><td>${N(p.shares)}</td>
+      <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
 
-async function toggleStar(postId, currentStar, btn) {
-  const newStar = !currentStar;
-  await db.from('posts').update({ is_star: newStar }).eq('id', postId);
-  btn.textContent = newStar ? '⭐' : '☆';
-  btn.setAttribute('onclick', `toggleStar('${postId}',${newStar},this)`);
+async function star(id, cur, btn) {
+  const nw = !cur;
+  await db.from('posts').update({ is_star: nw }).eq('id', id);
+  btn.textContent = nw ? '⭐' : '☆';
+  btn.setAttribute('onclick', `star('${id}',${nw},this)`);
 }
 
-// ===================== ESTRELLAS =====================
+// ═══════════════════════════════════════════
+// ESTRELLAS
+// ═══════════════════════════════════════════
 async function renderEstrellas() {
-  const el = document.getElementById('estrellas-content');
-  const { data: stars } = await db.from('posts').select('*, metric_periods(period_label)').eq('client_id', currentClient.id).eq('is_star', true).order('likes', { ascending: false });
-  if (!stars?.length) { el.innerHTML = '<div class="empty-state"><h3>Sin publicaciones estrella</h3><p>Marcá publicaciones con ⭐ en el tab "Publicaciones"</p></div>'; return; }
-  el.innerHTML = `<div class="table-wrap"><table>
+  const el = document.getElementById('c-estrellas');
+  const { data: stars } = await db.from('posts').select('*, metric_periods(period_label)').eq('client_id', client.id).eq('is_star', true).order('likes', { ascending: false });
+  if (!stars?.length) { el.innerHTML = '<div class="empty"><h3>Sin estrellas</h3><p>Marcá publicaciones con ⭐ en el tab "Publicaciones"</p></div>'; return; }
+  el.innerHTML = `<div class="tbl-wrap"><table>
     <thead><tr><th>Período</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
-    <tbody>${stars.map(p => `<tr>
+    <tbody>${stars.map(p=>`<tr>
       <td>${p.metric_periods?.period_label||'—'}</td><td>${p.pub_date||'—'}</td>
-      <td>⭐ ${p.description?.slice(0,60)||'—'}</td><td>${p.post_type||'—'}</td>
-      <td>${fmt(p.likes)}</td><td>${fmt(p.saves)}</td><td>${fmt(p.reach)}</td>
-      <td class="link-cell">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
+      <td>⭐ ${(p.description||'—').slice(0,55)}</td><td>${p.post_type||'—'}</td>
+      <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
+      <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
 }
 
-// ===================== CARGAR MÉTRICAS (CSV) =====================
-function renderCargarTab() {
-  const el = document.getElementById('cargar-content');
-  el.innerHTML = `
-    <div class="section-card">
-      <h3>📂 Cargar métricas desde Meta Business Suite</h3>
-      <p class="text-sm text-muted" style="margin-bottom:20px">Exportá el CSV de publicaciones desde Meta Business Suite y subilo acá. El sistema va a procesar todas las métricas automáticamente.</p>
-      <div class="form-group">
+// ═══════════════════════════════════════════
+// CARGAR MÉTRICAS (CSV Meta Business Suite)
+// ═══════════════════════════════════════════
+function renderCargar() {
+  document.getElementById('c-cargar').innerHTML = `
+    <div class="card">
+      <h3>📂 Cargar CSV de Meta Business Suite</h3>
+      <p class="text-sm text-muted" style="margin-bottom:20px">
+        Exportá las publicaciones desde Meta Business Suite y subí el archivo CSV acá.<br>
+        El sistema va a calcular los totales y guardar cada publicación automáticamente.
+      </p>
+      <div class="fg">
         <label>Nombre del período *</label>
         <input type="text" id="p-label" placeholder="Ej: Marzo 2026 o 01-15 Mar 2026">
       </div>
-      <div class="upload-area" id="csv-upload-area" onclick="document.getElementById('csv-file-input').click()">
-        <div class="upload-icon">📊</div>
-        <strong>Hacé clic para subir el CSV de Meta</strong>
+      <div class="upload-zone" onclick="document.getElementById('csv-input').click()">
+        <div class="icon">📊</div>
+        <strong>Hacé clic para subir el CSV</strong>
         <p>Exportado desde Meta Business Suite → Publicaciones</p>
-        <input type="file" id="csv-file-input" accept=".csv" style="display:none" onchange="handleCSVUpload(event)">
+        <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="handleCSV(event)">
       </div>
-      <div id="csv-preview-area"></div>
-      <div style="margin-top:16px">
-        <button class="btn btn-primary" onclick="saveCSVPeriod()" id="btn-save-csv" style="display:none">💾 Guardar período</button>
+      <div id="csv-preview"></div>
+      <div class="mt16">
+        <button class="btn btn-p" id="btn-save" onclick="saveCSV()" style="display:none">💾 Guardar período y publicaciones</button>
       </div>
     </div>`;
 }
 
-function handleCSVUpload(event) {
-  const file = event.target.files[0];
+function handleCSV(e) {
+  const file = e.target.files[0];
   if (!file) return;
   Papa.parse(file, {
     header: true, skipEmptyLines: true, encoding: 'UTF-8',
-    complete: (results) => processCSV(results.data)
+    complete: r => processCSV(r.data)
   });
+}
+
+function parseMetaDate(raw) {
+  // Format: "MM/DD/YYYY HH:MM" → "YYYY-MM-DD"
+  if (!raw) return null;
+  const datePart = raw.split(' ')[0];
+  const parts = datePart.split('/');
+  if (parts.length !== 3) return null;
+  return `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+}
+
+function toInt(val) {
+  const n = parseInt(String(val).replace(/\D/g, '') || '0');
+  return isNaN(n) ? 0 : n;
 }
 
 function processCSV(rows) {
-  // Meta exports one row per post, all with Fecha = "Total"
-  // Filter rows that have a valid permalink (= real posts)
-  const validPosts = rows.filter(r => r['Enlace permanente'] || r['Permalink'] || r['Identificador de la publicación']);
-
-  if (!validPosts.length) {
-    document.getElementById('csv-preview-area').innerHTML = '<div class="error-msg">No se encontraron publicaciones en el CSV. Verificá que sea el archivo correcto.</div>';
+  // Every row in Meta CSV is a publication (all have Fecha = "Total")
+  // Filter out empty rows
+  const posts = rows.filter(r => r['Identificador de la publicación'] || r['Enlace permanente']);
+  
+  if (!posts.length) {
+    document.getElementById('csv-preview').innerHTML = '<div class="err">No se encontraron publicaciones. Verificá que sea el archivo correcto de Meta Business Suite.</div>';
     return;
   }
 
-  // Calculate totals
-  const sum = (field, alts = []) => validPosts.reduce((acc, r) => {
-    const val = parseInt(r[field] || alts.reduce((v, k) => v || r[k], '') || 0);
-    return acc + (isNaN(val) ? 0 : val);
-  }, 0);
+  // Calculate totals from all posts
+  const totals = posts.reduce((acc, r) => ({
+    reach:    acc.reach    + toInt(r['Alcance']),
+    views:    acc.views    + toInt(r['Visualizaciones']),
+    likes:    acc.likes    + toInt(r['Me gusta']),
+    shares:   acc.shares   + toInt(r['Veces que se compartió']),
+    follows:  acc.follows  + toInt(r['Seguimientos']),
+    comments: acc.comments + toInt(r['Comentarios']),
+    saves:    acc.saves    + toInt(r['Veces que se guardó']),
+  }), { reach:0, views:0, likes:0, shares:0, follows:0, comments:0, saves:0 });
 
-  const totalReach = sum('Alcance', ['Reach']);
-  const totalImpressions = sum('Visualizaciones', ['Impressions', 'Impresiones']);
-  const totalLikes = sum('Me gusta', ['Likes']);
-  const totalShares = sum('Veces que se compartió', ['Shares']);
-  const totalFollows = sum('Seguimientos', ['Follows', 'Seguidores nuevos']);
-  const totalComments = sum('Comentarios', ['Comments']);
-  const totalSaves = sum('Veces que se guardó', ['Saves', 'Guardados']);
-  const totalInteractions = totalLikes + totalComments + totalShares + totalSaves;
+  // Get date range
+  const dates = posts.map(r => parseMetaDate(r['Hora de publicación'])).filter(Boolean).sort();
+  
+  csvData = { posts, totals, dateMin: dates[0], dateMax: dates[dates.length-1] };
 
-  parsedCSVData = {
-    posts: validPosts,
-    totals: {
-      reach: totalReach,
-      impressions: totalImpressions,
-      interactions: totalInteractions,
-      new_followers: totalFollows,
-      saves: totalSaves,
-      shares: totalShares,
-      total_posts: validPosts.length,
-      total_reach: totalReach,
-      total_views: totalImpressions,
-      total_likes: totalLikes,
-      total_comments: totalComments,
-      total_shares: totalShares,
-      total_saves: totalSaves,
-      total_follows: totalFollows,
-    }
-  };
-
-  document.getElementById('csv-preview-area').innerHTML = `
-    <div class="csv-preview">
-      <h4>✅ CSV procesado — ${validPosts.length} publicaciones encontradas</h4>
+  document.getElementById('csv-preview').innerHTML = `
+    <div class="preview-box">
+      <h4>✅ ${posts.length} publicaciones encontradas · ${dates[0]||'?'} a ${dates[dates.length-1]||'?'}</h4>
       <div>
-        <div class="csv-stat"><span>${fmt(totalReach)}</span>Alcance total</div>
-        <div class="csv-stat"><span>${fmt(totalImpressions)}</span>Visualizaciones</div>
-        <div class="csv-stat"><span>${fmt(totalInteractions)}</span>Interacciones</div>
-        <div class="csv-stat"><span>${fmt(totalLikes)}</span>Me gusta</div>
-        <div class="csv-stat"><span>${fmt(totalSaves)}</span>Guardados</div>
-        <div class="csv-stat"><span>${fmt(totalShares)}</span>Compartidos</div>
-        <div class="csv-stat"><span>${fmt(totalFollows)}</span>Seguimientos</div>
+        <div class="stat-chip"><span>${N(totals.reach)}</span>Alcance</div>
+        <div class="stat-chip"><span>${N(totals.views)}</span>Visualizaciones</div>
+        <div class="stat-chip"><span>${N(totals.likes)}</span>Me gusta</div>
+        <div class="stat-chip"><span>${N(totals.saves)}</span>Guardados</div>
+        <div class="stat-chip"><span>${N(totals.shares)}</span>Compartidos</div>
+        <div class="stat-chip"><span>${N(totals.comments)}</span>Comentarios</div>
+        <div class="stat-chip"><span>${N(totals.follows)}</span>Seguimientos</div>
       </div>
     </div>`;
-  document.getElementById('btn-save-csv').style.display = 'flex';
+  document.getElementById('btn-save').style.display = 'flex';
 }
 
-async function saveCSVPeriod() {
+async function saveCSV() {
   const label = document.getElementById('p-label').value.trim();
   if (!label) { alert('Completá el nombre del período'); return; }
-  if (!parsedCSVData) { alert('Primero subí el CSV'); return; }
+  if (!csvData) { alert('Primero subí el CSV'); return; }
 
-  const btn = document.getElementById('btn-save-csv');
+  const btn = document.getElementById('btn-save');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...';
 
-  // Derive period_start and period_end from posts dates
-  const allDates = parsedCSVData.posts.map(r => {
-    const rawDate = r['Hora de publicación'] || r['Published'] || '';
-    if (!rawDate || !rawDate.includes('/')) return null;
-    const parts = rawDate.split(' ')[0].split('/');
-    if (parts.length !== 3) return null;
-    return `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
-  }).filter(Boolean).sort();
-  const periodStart = allDates[0] || new Date().toISOString().split('T')[0];
-  const periodEnd = allDates[allDates.length - 1] || periodStart;
+  const periodStart = csvData.dateMin || new Date().toISOString().split('T')[0];
+  const periodEnd   = csvData.dateMax || periodStart;
 
-  // Save period
+  // 1. Guardar el período
   const { data: period, error: pErr } = await db.from('metric_periods').insert({
-    client_id: currentClient.id,
-    period_label: label,
-    period_start: periodStart,
-    period_end: periodEnd,
-    ...parsedCSVData.totals
+    client_id:     client.id,
+    period_label:  label,
+    period_start:  periodStart,
+    period_end:    periodEnd,
+    total_posts:   csvData.posts.length,
+    total_reach:   csvData.totals.reach,
+    total_views:   csvData.totals.views,
+    total_likes:   csvData.totals.likes,
+    total_saves:   csvData.totals.saves,
+    total_shares:  csvData.totals.shares,
+    total_comments:csvData.totals.comments,
+    total_follows: csvData.totals.follows,
   }).select().single();
 
-  if (pErr) { alert('Error: ' + pErr.message); btn.disabled = false; btn.innerHTML = '💾 Guardar período'; return; }
+  if (pErr) {
+    alert('Error guardando período: ' + pErr.message);
+    btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
+    return;
+  }
 
-  // Save individual posts — using exact column names from DB schema
-  const postsToInsert = parsedCSVData.posts.map(r => {
-    const rawDate = r['Hora de publicación'] || r['Published'] || '';
-    let pubDate = null;
-    if (rawDate && rawDate.includes('/')) {
-      const parts = rawDate.split(' ')[0].split('/');
-      if (parts.length === 3) pubDate = `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
-    } else if (rawDate.match && rawDate.match(/\d{4}-\d{2}-\d{2}/)) {
-      pubDate = rawDate.split('T')[0];
-    }
-    if (!pubDate) pubDate = periodStart; // fallback
-    return {
-      client_id: currentClient.id,
-      period_id: period.id,
-      pub_date: pubDate,                                                          // date NOT NULL
-      post_type: r['Tipo de publicación'] || r['Post type'] || null,
-      link: r['Enlace permanente'] || r['Permalink'] || null,
-      description: r['Descripción'] || r['Description'] || null,
-      reach: parseInt(r['Alcance'] || r['Reach'] || 0) || 0,
-      views: parseInt(r['Visualizaciones'] || r['Impressions'] || 0) || 0,
-      likes: parseInt(r['Me gusta'] || r['Likes'] || 0) || 0,
-      comments: parseInt(r['Comentarios'] || r['Comments'] || 0) || 0,
-      shares: parseInt(r['Veces que se compartió'] || r['Shares'] || 0) || 0,
-      saves: parseInt(r['Veces que se guardó'] || r['Saves'] || 0) || 0,
-      follows: parseInt(r['Seguimientos'] || r['Follows'] || 0) || 0,
-    };
-  });
+  // 2. Guardar cada publicación
+  const toInsert = csvData.posts.map(r => ({
+    client_id: client.id,
+    period_id:  period.id,
+    pub_date:   parseMetaDate(r['Hora de publicación']) || periodStart,
+    post_type:  r['Tipo de publicación'] || null,
+    link:       r['Enlace permanente'] || null,
+    description:r['Descripción'] || null,
+    reach:      toInt(r['Alcance']),
+    views:      toInt(r['Visualizaciones']),
+    likes:      toInt(r['Me gusta']),
+    comments:   toInt(r['Comentarios']),
+    shares:     toInt(r['Veces que se compartió']),
+    saves:      toInt(r['Veces que se guardó']),
+    follows:    toInt(r['Seguimientos']),
+  }));
 
-  const { error: postsErr } = await db.from('posts').insert(postsToInsert);
-  if (postsErr) { alert('Error guardando publicaciones: ' + postsErr.message); console.error(postsErr); }
+  const { error: postsErr } = await db.from('posts').insert(toInsert);
+  if (postsErr) {
+    alert('Error guardando publicaciones: ' + postsErr.message);
+    console.error(postsErr);
+    btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
+    return;
+  }
 
+  // 3. Éxito
+  csvData = null;
   await loadPeriods();
-  parsedCSVData = null;
-  btn.disabled = false; btn.innerHTML = '💾 Guardar período';
-  alert(`¡Período "${label}" guardado con ${postsToInsert.length} publicaciones!`);
+  btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
+  alert(`✅ Período "${label}" guardado con ${toInsert.length} publicaciones.`);
   switchTab('resumen');
 }
 
-// ===================== ALERTS =====================
+// ═══════════════════════════════════════════
+// ALERTS
+// ═══════════════════════════════════════════
 async function checkAlerts() {
   const now = new Date();
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const alerts = [];
-  const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  for (const client of clients) {
-    if (!client.active) continue;
-    if (new Date(client.start_date) > now) continue;
-    const { data: periods } = await db.from('metric_periods').select('period_label').eq('client_id', client.id);
-    const labels = periods?.map(p => p.period_label.toLowerCase()) || [];
-    const currMonth = monthNames[now.getMonth()];
-    const currYear = now.getFullYear();
-    if (client.pieces_per_month === 30) {
-      const hasFH = labels.some(l => (l.includes('1-15')||l.includes('01-15')||l.includes('primera')) && l.includes(currMonth));
-      const hasSH = labels.some(l => (l.includes('16-')||l.includes('segunda')) && l.includes(currMonth));
-      if (!hasFH && now.getDate() >= 15) alerts.push(`⚠️ <strong>${client.name}</strong>: falta la primera quincena de ${currMonth} ${currYear}`);
-      if (!hasSH && now.getDate() >= 28) alerts.push(`⚠️ <strong>${client.name}</strong>: falta la segunda quincena de ${currMonth} ${currYear}`);
+  for (const c of clients) {
+    if (!c.active || !c.start_date || new Date(c.start_date) > now) continue;
+    const { data: pp } = await db.from('metric_periods').select('period_label').eq('client_id', c.id);
+    const labels = (pp||[]).map(p => p.period_label.toLowerCase());
+    const cm = months[now.getMonth()], cy = now.getFullYear();
+    if (c.pieces_per_month === 30) {
+      if (now.getDate() >= 15 && !labels.some(l => (l.includes('1-15')||l.includes('primera')) && l.includes(cm)))
+        alerts.push(`⚠️ <strong>${c.name}</strong>: falta la 1ª quincena de ${cm} ${cy}`);
+      if (now.getDate() >= 28 && !labels.some(l => (l.includes('16')||l.includes('segunda')) && l.includes(cm)))
+        alerts.push(`⚠️ <strong>${c.name}</strong>: falta la 2ª quincena de ${cm} ${cy}`);
     } else if (now.getDate() >= 3) {
-      const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
-      const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
-      const hasPrev = labels.some(l => l.includes(monthNames[prevMonth]) && l.includes(String(prevYear)));
-      if (!hasPrev) alerts.push(`⚠️ <strong>${client.name}</strong>: falta cargar ${monthNames[prevMonth]} ${prevYear}`);
+      const pm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+      const py = now.getMonth() === 0 ? now.getFullYear()-1 : now.getFullYear();
+      if (!labels.some(l => l.includes(months[pm]) && l.includes(String(py))))
+        alerts.push(`⚠️ <strong>${c.name}</strong>: falta cargar ${months[pm]} ${py}`);
     }
   }
-  const container = document.getElementById('alerts-container');
-  if (alerts.length) container.innerHTML = `<div class="alert-banner"><h3>📋 Métricas pendientes</h3>${alerts.map(a=>`<div class="alert-item">${a}</div>`).join('')}</div>`;
+  const el = document.getElementById('alerts-box');
+  el.innerHTML = alerts.length ? `<div class="alert-box"><h3>📋 Métricas pendientes</h3>${alerts.map(a=>`<div class="alert-item">${a}</div>`).join('')}</div>` : '';
 }
 
-// ===================== IA TAB =====================
-function renderIATab() {
-  const el = document.getElementById('ia-content');
-  if (!currentClient.notion_database_id) {
-    el.innerHTML = `<div class="ai-trigger-wrap">
-      <h3>✨ Análisis IA de contenido</h3>
-      <p>Para usar el análisis IA necesitás cargar el <strong>Notion Database ID</strong> del cliente.<br>Hacé clic en "Editar" y completá ese campo.</p>
-      <button class="btn btn-secondary" onclick="openEditClient()">✏️ Editar cliente</button>
-    </div>`;
+// ═══════════════════════════════════════════
+// ANÁLISIS IA
+// ═══════════════════════════════════════════
+function renderIA() {
+  const el = document.getElementById('c-ia');
+  if (!client.notion_database_id) {
+    el.innerHTML = `<div class="ai-center"><h3>✨ Análisis IA</h3>
+      <p>Necesitás cargar el <strong>Notion Database ID</strong> del cliente para usar esta función.</p>
+      <button class="btn btn-s" onclick="openEditClient()">✏️ Editar cliente</button></div>`;
     return;
   }
-  el.innerHTML = `<div class="ai-trigger-wrap">
-    <h3>✨ Análisis IA de contenido</h3>
-    <p>Claude va a leer todos los guiones de Notion con estado "Subido",<br>cruzarlos con las métricas por fecha y detectar qué funciona y qué no.</p>
-    <button class="btn btn-primary" id="btn-run-ai" onclick="runAIAnalysis()">🚀 Analizar contenido con IA</button>
-    <div id="ai-progress" style="margin-top:24px;display:none">
-      <p id="ai-status-text" style="color:var(--gray-500);font-size:14px;margin-bottom:8px"></p>
-      <div class="progress-bar-wrap"><div class="progress-bar" id="ai-progress-bar" style="width:0%"></div></div>
+  el.innerHTML = `
+    <div class="ai-center">
+      <h3>✨ Análisis IA de contenido</h3>
+      <p>Claude va a leer todos los guiones de Notion con estado "Subido",<br>
+      cruzarlos con las métricas por fecha y detectar qué funciona y qué no.</p>
+      <button class="btn btn-p" id="btn-ia-run" onclick="runIA()">🚀 Analizar con IA</button>
+      <div id="ia-prog" style="margin-top:24px;display:none">
+        <p id="ia-txt" style="color:var(--gray-500);font-size:14px;margin-bottom:8px"></p>
+        <div class="pb-wrap"><div class="pb" id="ia-bar" style="width:0%"></div></div>
+      </div>
     </div>
-  </div>
-  <div id="ai-results"></div>`;
+    <div id="ia-results"></div>`;
 }
 
-function setAIProgress(pct, text) {
-  document.getElementById('ai-progress').style.display = 'block';
-  document.getElementById('ai-progress-bar').style.width = pct + '%';
-  document.getElementById('ai-status-text').textContent = text;
+function iaProgress(pct, txt) {
+  document.getElementById('ia-prog').style.display = 'block';
+  document.getElementById('ia-bar').style.width = pct + '%';
+  document.getElementById('ia-txt').textContent = txt;
 }
 
-async function runAIAnalysis() {
-  const btn = document.getElementById('btn-run-ai');
+async function runIA() {
+  const btn = document.getElementById('btn-ia-run');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analizando...';
-  document.getElementById('ai-results').innerHTML = '';
+  document.getElementById('ia-results').innerHTML = '';
   try {
-    setAIProgress(10, 'Conectando con Notion...');
-    const scripts = await fetchNotionScripts(currentClient.notion_database_id);
+    iaProgress(10, 'Conectando con Notion...');
+    const scripts = await getNotionScripts(client.notion_database_id);
     if (!scripts.length) {
-      document.getElementById('ai-results').innerHTML = '<div class="empty-state"><h3>No se encontraron guiones con estado "Subido" en Notion</h3></div>';
-      btn.disabled = false; btn.innerHTML = '🚀 Analizar contenido con IA'; return;
+      document.getElementById('ia-results').innerHTML = '<div class="empty"><h3>No se encontraron guiones con estado "Subido" en Notion</h3></div>';
+      btn.disabled = false; btn.innerHTML = '🚀 Analizar con IA'; return;
     }
-    setAIProgress(35, `${scripts.length} guiones encontrados. Cargando métricas...`);
-    const { data: allPosts } = await db.from('posts').select('*').eq('client_id', currentClient.id);
-    const postsWithScripts = crossByDate(scripts, allPosts || []);
-    setAIProgress(60, `${postsWithScripts.length} piezas cruzadas con métricas. Enviando a Claude...`);
-    const analysis = await analyzeWithClaude(scripts, postsWithScripts);
-    setAIProgress(95, 'Renderizando resultados...');
-    renderAIAnalysis(analysis, scripts.length, postsWithScripts.length);
-    setAIProgress(100, '¡Análisis completado!');
-  } catch (err) {
+    iaProgress(40, `${scripts.length} guiones encontrados. Cruzando con métricas...`);
+    const { data: allPosts } = await db.from('posts').select('pub_date,likes,saves,reach,shares,comments,views').eq('client_id', client.id);
+    const byDate = {};
+    (allPosts||[]).forEach(p => { if (p.pub_date) byDate[p.pub_date] = p; });
+    const crossed = scripts.map(s => ({ ...s, metrics: s.upload_date ? byDate[s.upload_date] : null })).filter(s => s.metrics);
+    iaProgress(65, `${crossed.length} piezas cruzadas. Enviando a Claude...`);
+    const analysis = await callClaude(scripts, crossed);
+    iaProgress(95, 'Renderizando resultados...');
+    renderIAResults(analysis, scripts.length, crossed.length);
+    iaProgress(100, '¡Análisis completado!');
+  } catch(err) {
+    document.getElementById('ia-results').innerHTML = `<div class="err">Error: ${err.message}</div>`;
     console.error(err);
-    document.getElementById('ai-results').innerHTML = `<div class="error-msg">Error: ${err.message}</div>`;
   }
   btn.disabled = false; btn.innerHTML = '🔄 Volver a analizar';
 }
 
-async function fetchNotionScripts(databaseId) {
-  const cleanId = databaseId.replace(/-/g, '');
-  const fmtId = [cleanId.slice(0,8), cleanId.slice(8,12), cleanId.slice(12,16), cleanId.slice(16,20), cleanId.slice(20)].join('-');
-
-  // Use Supabase Edge Function as CORS proxy for Notion API
-  // Direct Notion API calls are blocked by CORS from browsers
-  const body = JSON.stringify({
-    filter: { property: 'Estado', status: { equals: 'Subido' } },
-    page_size: 100
-  });
-
-  // Call via Supabase Edge Function proxy (avoids CORS issues)
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/quick-processor`, {
+async function getNotionScripts(dbId) {
+  const clean = dbId.replace(/-/g, '');
+  const fid = [clean.slice(0,8),clean.slice(8,12),clean.slice(12,16),clean.slice(16,20),clean.slice(20)].join('-');
+  const res = await fetch(EDGE_FN, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SUPABASE_KEY}`,
-    },
-    body: JSON.stringify({ databaseId: fmtId, notionToken: NOTION_TOKEN })
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
+    body: JSON.stringify({ databaseId: fid, notionToken: NOTION })
   });
-
-  if (!res.ok) throw new Error(`Error conectando con Notion: ${res.status} — ${await res.text()}`);
+  if (!res.ok) throw new Error(`Edge Function error: ${res.status} — ${await res.text()}`);
   const data = await res.json();
   if (data.error) throw new Error(data.error);
-  return parseNotionScripts(data.results);
+  if (!data.results) throw new Error('Notion no devolvió resultados');
+  return parseScripts(data.results);
 }
 
-function parseNotionScripts(pages) {
+function parseScripts(pages) {
   return pages.map(page => {
-    const props = page.properties;
-    const get = (p) => {
+    const pp = page.properties;
+    const g = p => {
       if (!p) return null;
-      if (p.type === 'title') return p.title?.map(t => t.plain_text).join('') || null;
-      if (p.type === 'rich_text') return p.rich_text?.map(t => t.plain_text).join('') || null;
-      if (p.type === 'select') return p.select?.name || null;
-      if (p.type === 'multi_select') return p.multi_select?.map(s => s.name).join(', ') || null;
-      if (p.type === 'date') return p.date?.start || null;
-      if (p.type === 'status') return p.status?.name || null;
+      if (p.type==='title') return p.title?.map(t=>t.plain_text).join('')||null;
+      if (p.type==='rich_text') return p.rich_text?.map(t=>t.plain_text).join('')||null;
+      if (p.type==='select') return p.select?.name||null;
+      if (p.type==='multi_select') return p.multi_select?.map(s=>s.name).join(', ')||null;
+      if (p.type==='date') return p.date?.start||null;
+      if (p.type==='status') return p.status?.name||null;
       return null;
     };
-    // Find date field
     let uploadDate = null;
-    for (const key of Object.keys(props)) {
-      if (key.toLowerCase().includes('fecha') || key.toLowerCase().includes('subido') || key.toLowerCase().includes('date')) {
-        const val = get(props[key]);
-        if (val && /\d{4}-\d{2}-\d{2}/.test(val)) { uploadDate = val; break; }
+    for (const k of Object.keys(pp)) {
+      if (k.toLowerCase().includes('fecha')||k.toLowerCase().includes('subido')||k.toLowerCase().includes('date')) {
+        const v = g(pp[k]);
+        if (v && /\d{4}-\d{2}-\d{2}/.test(v)) { uploadDate = v; break; }
       }
     }
-    const titleKey = Object.keys(props).find(k => props[k].type === 'title');
+    const tk = Object.keys(pp).find(k => pp[k].type==='title');
     return {
-      id: page.id,
-      title: get(props[titleKey]) || 'Sin título',
-      tema: get(props['Tema'] || props['Ángulo'] || props['Angulo'] || props['Pilar']),
-      estructura: get(props['Estructura'] || props['Formato'] || props['Tipo']),
-      cta: get(props['CTA'] || props['Call to action']),
-      hook: get(props['Hook'] || props['Gancho']),
-      pilar: get(props['Pilar'] || props['Categoría'] || props['Categoria']),
+      title:     g(pp[tk]) || 'Sin título',
+      tema:      g(pp['Tema']||pp['Ángulo']||pp['Angulo']||pp['Pilar']),
+      estructura:g(pp['Estructura']||pp['Formato']||pp['Tipo']),
+      cta:       g(pp['CTA']||pp['Call to action']),
+      hook:      g(pp['Hook']||pp['Gancho']),
+      pilar:     g(pp['Pilar']||pp['Categoría']||pp['Categoria']),
       upload_date: uploadDate,
     };
   });
 }
 
-function crossByDate(scripts, posts) {
-  const postsByDate = {};
-  posts.forEach(p => { if (p.pub_date) postsByDate[p.pub_date] = p; });
-  return scripts
-    .map(s => ({ ...s, post: s.upload_date ? (postsByDate[s.upload_date] || null) : null }))
-    .filter(s => s.post);
-}
-
-async function analyzeWithClaude(scripts, crossed) {
-  const scriptsSummary = scripts.slice(0, 60).map(s =>
+async function callClaude(scripts, crossed) {
+  const scriptsSummary = scripts.slice(0,60).map(s =>
     `- "${s.title}" | Tema: ${s.tema||'?'} | Formato: ${s.estructura||'?'} | Hook: ${s.hook||'?'} | CTA: ${s.cta||'?'}`
   ).join('\n');
-  const crossedSummary = crossed.slice(0, 40).map(s =>
-    `- "${s.title}" → Likes: ${s.post.likes||0}, Guardados: ${s.post.saves||0}, Alcance: ${s.post.reach||0}, Compartidos: ${s.post.shares||0} | Tema: ${s.tema||'?'} | Formato: ${s.estructura||'?'} | Hook: ${s.hook||'?'}`
+  const crossedSummary = crossed.slice(0,40).map(s =>
+    `- "${s.title}" → Likes:${s.metrics.likes||0} Guardados:${s.metrics.saves||0} Alcance:${s.metrics.reach||0} Compartidos:${s.metrics.shares||0} | Tema:${s.tema||'?'} | Formato:${s.estructura||'?'} | Hook:${s.hook||'?'}`
   ).join('\n');
 
-  const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${currentClient.name}" y devolvé un análisis estratégico en JSON.
+  const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${client.name}".
 
-GUIONES TOTALES (${scripts.length}):
+GUIONES (${scripts.length} total):
 ${scriptsSummary}
 
-GUIONES CRUZADOS CON MÉTRICAS (${crossed.length} piezas con datos reales de performance):
+GUIONES CON MÉTRICAS REALES (${crossed.length} piezas cruzadas por fecha):
 ${crossedSummary}
 
-Devolvé SOLAMENTE un JSON válido con esta estructura:
+Devolvé SOLO un JSON válido con esta estructura exacta:
 {
-  "resumen_ejecutivo": "párrafo de 3-4 líneas con los hallazgos más importantes",
-  "patrones_ganadores": [{"patron": "nombre", "descripcion": "por qué funciona", "ejemplos": ["título1", "título2"]}],
-  "patrones_debiles": [{"patron": "nombre", "descripcion": "por qué no funciona", "ejemplos": ["título1"]}],
+  "resumen_ejecutivo": "3-4 líneas con los hallazgos más importantes",
+  "patrones_ganadores": [{"patron": "nombre", "descripcion": "por qué funciona", "ejemplos": ["titulo1"]}],
+  "patrones_debiles": [{"patron": "nombre", "descripcion": "por qué no funciona", "ejemplos": ["titulo1"]}],
   "analisis_ganchos": {"mejor_estilo": "...", "peor_estilo": "...", "recomendacion": "..."},
   "analisis_ctas": {"patron_dominante": "...", "recomendacion": "..."},
   "recomendaciones": ["recomendación 1", "recomendación 2", "recomendación 3"],
@@ -978,52 +950,45 @@ Devolvé SOLAMENTE un JSON válido con esta estructura:
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-allow-browser': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role: 'user', content: prompt }] })
+    headers: { 'x-api-key': CLAUDE, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-allow-browser': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role:'user', content: prompt }] })
   });
-  if (!res.ok) throw new Error(`Claude API: ${res.status} — ${await res.text()}`);
-  const data = await res.json();
-  const text = data.content[0].text;
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('Claude no devolvió JSON válido');
-  return JSON.parse(match[0]);
+  if (!res.ok) throw new Error(`Claude API: ${res.status}`);
+  const d = await res.json();
+  const txt = d.content[0].text;
+  const m = txt.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('Claude no devolvió JSON válido');
+  return JSON.parse(m[0]);
 }
 
-function renderAIAnalysis(analysis, totalScripts, crossedCount) {
-  document.getElementById('ai-results').innerHTML = `
-    <div style="margin-bottom:16px;color:var(--gray-500);font-size:13px">
-      <strong>${totalScripts}</strong> guiones analizados · <strong>${crossedCount}</strong> cruzados con métricas
+function renderIAResults(a, total, crossed) {
+  document.getElementById('ia-results').innerHTML = `
+    <div class="text-sm text-muted" style="margin-bottom:16px"><strong>${total}</strong> guiones · <strong>${crossed}</strong> cruzados con métricas</div>
+    <div class="ai-summary"><p><strong>📋 Resumen ejecutivo</strong><br><br>${a.resumen_ejecutivo||''}</p></div>
+    <div class="ai-grid">
+      ${aiCard('✅ Patrones ganadores', a.patrones_ganadores, 'g')}
+      ${aiCard('⚠️ Patrones débiles', a.patrones_debiles, 'r')}
     </div>
-    <div class="ai-summary"><p><strong>📋 Resumen ejecutivo</strong><br><br>${analysis.resumen_ejecutivo||''}</p></div>
-    <div class="ai-cards-grid">
-      ${aiPatternCard('✅ Patrones ganadores', analysis.patrones_ganadores, 'green')}
-      ${aiPatternCard('⚠️ Patrones débiles', analysis.patrones_debiles, 'red')}
-    </div>
-    <div class="ai-cards-grid" style="margin-top:16px">
+    <div class="ai-grid" style="margin-top:16px">
       <div class="ai-card">
-        <div class="ai-card-title">🎣 Análisis de Hooks</div>
-        ${analysis.analisis_ganchos ? `
-          <p><strong>Mejor estilo:</strong> ${analysis.analisis_ganchos.mejor_estilo}</p>
-          <br><p><strong>Evitar:</strong> ${analysis.analisis_ganchos.peor_estilo}</p>
-          <br><p><strong>Recomendación:</strong> ${analysis.analisis_ganchos.recomendacion}</p>` : ''}
+        <div class="ai-card-title">🎣 Hooks</div>
+        ${a.analisis_ganchos?`<p><strong>Mejor:</strong> ${a.analisis_ganchos.mejor_estilo}</p><br><p><strong>Evitar:</strong> ${a.analisis_ganchos.peor_estilo}</p><br><p><strong>Tip:</strong> ${a.analisis_ganchos.recomendacion}</p>`:''}
       </div>
       <div class="ai-card">
-        <div class="ai-card-title">📣 Análisis de CTAs</div>
-        ${analysis.analisis_ctas ? `
-          <p><strong>Patrón actual:</strong> ${analysis.analisis_ctas.patron_dominante}</p>
-          <br><p><strong>Mejora:</strong> ${analysis.analisis_ctas.recomendacion}</p>` : ''}
+        <div class="ai-card-title">📣 CTAs</div>
+        ${a.analisis_ctas?`<p><strong>Patrón actual:</strong> ${a.analisis_ctas.patron_dominante}</p><br><p><strong>Mejora:</strong> ${a.analisis_ctas.recomendacion}</p>`:''}
       </div>
     </div>
-    <div class="section-card" style="margin-top:16px">
-      <h3>💡 Recomendaciones estratégicas</h3>
-      <ul style="padding-left:16px">${(analysis.recomendaciones||[]).map(r=>`<li style="margin-bottom:8px;font-size:14px">${r}</li>`).join('')}</ul>
+    <div class="card" style="margin-top:16px">
+      <h3>💡 Recomendaciones</h3>
+      <ul style="padding-left:16px">${(a.recomendaciones||[]).map(r=>`<li style="margin-bottom:8px;font-size:14px">${r}</li>`).join('')}</ul>
     </div>
-    <div class="section-card" style="margin-top:16px">
+    <div class="card" style="margin-top:16px">
       <h3>🚀 Próximos guiones sugeridos</h3>
-      <div class="ai-scripts-list">${(analysis.proximos_guiones||[]).map(g=>`
-        <div class="ai-script-item">
+      <div class="script-list">${(a.proximos_guiones||[]).map(g=>`
+        <div class="script-item">
           <h4>${g.titulo}</h4>
-          <p><span class="ai-tag ai-tag-blue">${g.tema}</span> <span class="ai-tag ai-tag-yellow">${g.estructura}</span></p>
+          <div><span class="tag tag-b">${g.tema||'—'}</span><span class="tag tag-y">${g.estructura||'—'}</span></div>
           <p style="margin-top:8px"><strong>Hook:</strong> ${g.hook}</p>
           <p style="margin-top:4px;color:var(--success)"><strong>Por qué va a funcionar:</strong> ${g.razon}</p>
         </div>`).join('')}
@@ -1031,23 +996,27 @@ function renderAIAnalysis(analysis, totalScripts, crossedCount) {
     </div>`;
 }
 
-function aiPatternCard(title, items, color) {
+function aiCard(title, items, color) {
   if (!items?.length) return `<div class="ai-card"><div class="ai-card-title">${title}</div><p class="text-muted">Sin datos suficientes</p></div>`;
   return `<div class="ai-card"><div class="ai-card-title">${title}</div>${items.map(item=>`
     <div style="margin-bottom:12px">
-      <span class="ai-tag ai-tag-${color}">${item.patron}</span>
+      <span class="tag tag-${color}">${item.patron}</span>
       <p style="margin-top:6px;font-size:13px">${item.descripcion}</p>
-      ${item.ejemplos?.length ? `<p style="margin-top:4px;font-size:12px;color:var(--gray-500)">Ej: ${item.ejemplos.join(' · ')}</p>` : ''}
+      ${item.ejemplos?.length?`<p style="margin-top:4px;font-size:12px;color:var(--gray-500)">Ej: ${item.ejemplos.join(' · ')}</p>`:''}
     </div>`).join('')}</div>`;
 }
 
-// ===================== MODALS =====================
+// ═══════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id); });
+document.addEventListener('click', e => { if (e.target.classList.contains('overlay')) closeModal(e.target.id); });
 
-// ===================== UTILS =====================
-function fmt(n) { if (!n && n !== 0) return '—'; return Number(n).toLocaleString('es-AR'); }
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function N(n) { if (n === null || n === undefined || n === '') return '—'; return Number(n).toLocaleString('es-AR'); }
 function fmtDate(d) { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
 </script>
 </body>
