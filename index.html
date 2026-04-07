@@ -1154,9 +1154,28 @@ RECOMENDACION: qué mejorar
     body: JSON.stringify({ action: 'claude', prompt })
   });
   if (!res.ok) throw new Error(`Edge Function error: ${res.status} — ${await res.text()}`);
-  const d = await res.json();
-  if (d.error) throw new Error(d.error);
-  const txt = d.text || d.content?.[0]?.text || '';
+  const rawText = await res.text();
+  let txt = '';
+  try {
+    const d = JSON.parse(rawText);
+    if (d.error) throw new Error(d.error);
+    txt = d.text || d.content?.[0]?.text || '';
+  } catch(jsonErr) {
+    // Si el JSON del wrapper falla, intentar extraer el texto directamente
+    // buscando el contenido entre las secciones ##
+    const secMatch = rawText.match(/##RESUMEN##[\s\S]*/);
+    if (secMatch) {
+      txt = secMatch[0];
+    } else {
+      // Intentar extraer el valor del campo "text" con regex
+      const textMatch = rawText.match(/"text"\s*:\s*"([\s\S]*?)"\s*[,}]/);
+      if (textMatch) {
+        txt = textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+      } else {
+        throw new Error('Respuesta inválida del Edge Function: ' + rawText.slice(0, 200));
+      }
+    }
+  }
   if (!txt) throw new Error('No se recibió análisis. Respuesta vacía.');
 
   // Parsear formato de secciones (sin JSON)
