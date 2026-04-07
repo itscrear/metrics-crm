@@ -1105,35 +1105,49 @@ async function callClaude(scripts, crossed, allPosts) {
 
   const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${client.name}".
 
-GUIONES DE NOTION (${scripts.length} total, estado "Subido"):
+GUIONES DE NOTION (${scripts.length} total):
 ${scriptsSummary}
 
-GUIONES CRUZADOS CON MÉTRICAS POR FECHA (${crossed.length} piezas):
+GUIONES CRUZADOS CON MÉTRICAS (${crossed.length} piezas):
 ${crossedSummary}
 
 ${metaSummary}
 
-IMPORTANTE: Si hay pocos o ningún cruce, igual analizá los patrones de los guiones (temas, hooks, formatos) y combinalo con las métricas generales disponibles. Dame recomendaciones accionables de todas formas.
+IMPORTANTE: Si hay pocos o ningún cruce, igual analizá los patrones de los guiones y combinalo con las métricas generales. Dame recomendaciones accionables.
 
-REGLAS CRÍTICAS PARA EL JSON:
-- Usá SOLO comillas dobles para strings
-- NO uses apóstrofes ni comillas simples dentro de los valores
-- Si un título tiene comillas, reemplazalas por paréntesis
-- NO uses saltos de línea dentro de los valores de string
-- El JSON debe ser parseable directamente con JSON.parse()
+Respondé usando EXACTAMENTE este formato de secciones (no uses JSON, usá texto plano con estos encabezados exactos):
 
-Devolvé SOLO un JSON válido con esta estructura exacta:
-{
-  "resumen_ejecutivo": "3-4 líneas con los hallazgos más importantes",
-  "patrones_ganadores": [{"patron": "nombre", "descripcion": "por qué funciona", "ejemplos": ["titulo1"]}],
-  "patrones_debiles": [{"patron": "nombre", "descripcion": "por qué no funciona", "ejemplos": ["titulo1"]}],
-  "analisis_ganchos": {"mejor_estilo": "...", "peor_estilo": "...", "recomendacion": "..."},
-  "analisis_ctas": {"patron_dominante": "...", "recomendacion": "..."},
-  "recomendaciones": ["recomendación 1", "recomendación 2", "recomendación 3"],
-  "proximos_guiones": [{"titulo": "...", "tema": "...", "estructura": "...", "hook": "...", "razon": "..."}]
-}`;
+##RESUMEN##
+Escribí aquí 3-4 oraciones con los hallazgos principales.
 
-  // Llamar a Claude via Edge Function para no exponer el API key en el frontend
+##PATRONES_GANADORES##
+- PATRON: nombre del patrón | DESCRIPCION: por qué funciona | EJEMPLO: título de guión
+- PATRON: nombre del patrón | DESCRIPCION: por qué funciona | EJEMPLO: título de guión
+
+##PATRONES_DEBILES##
+- PATRON: nombre del patrón | DESCRIPCION: por qué no funciona | EJEMPLO: título de guión
+
+##GANCHOS##
+MEJOR: descripción del mejor estilo de hook
+PEOR: descripción del peor estilo
+RECOMENDACION: qué hacer
+
+##CTAS##
+PATRON: descripción del patrón dominante
+RECOMENDACION: qué mejorar
+
+##RECOMENDACIONES##
+- Recomendación concreta 1
+- Recomendación concreta 2
+- Recomendación concreta 3
+- Recomendación concreta 4
+
+##PROXIMOS_GUIONES##
+- TITULO: título sugerido | TEMA: tema | ESTRUCTURA: formato | HOOK: gancho propuesto | RAZON: por qué funcionaría
+- TITULO: título sugerido | TEMA: tema | ESTRUCTURA: formato | HOOK: gancho propuesto | RAZON: por qué funcionaría
+- TITULO: título sugerido | TEMA: tema | ESTRUCTURA: formato | HOOK: gancho propuesto | RAZON: por qué funcionaría`;
+
+  // Llamar a Claude via Edge Function
   const res = await fetch(EDGE_FN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
@@ -1143,35 +1157,73 @@ Devolvé SOLO un JSON válido con esta estructura exacta:
   const d = await res.json();
   if (d.error) throw new Error(d.error);
   const txt = d.text || d.content?.[0]?.text || '';
-  const m = txt.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('No se recibió análisis válido. Respuesta: ' + txt.slice(0,200));
-  // Intentar parse directo, si falla limpiar caracteres problemáticos
-  try {
-    return JSON.parse(m[0]);
-  } catch(e1) {
-    try {
-      // Limpiar saltos de línea dentro de strings y caracteres de control
-      const cleaned = m[0]
-        .replace(/[\u0000-\u001F\u007F]/g, ' ')  // control chars
-        .replace(/\n/g, ' ')
-        .replace(/\r/g, ' ')
-        .replace(/\t/g, ' ');
-      return JSON.parse(cleaned);
-    } catch(e2) {
-      // Último recurso: extraer cada campo individualmente
-      const safe = {};
-      const fields = ['resumen_ejecutivo','analisis_ganchos','analisis_ctas'];
-      fields.forEach(f => {
-        const fm = txt.match(new RegExp(`"${f}"\\s*:\\s*"([^"]*)"`, 's'));
-        if (fm) safe[f] = fm[1];
-      });
-      ['patrones_ganadores','patrones_debiles','recomendaciones','proximos_guiones'].forEach(f => {
-        safe[f] = [];
-      });
-      if (Object.keys(safe).length === 0) throw new Error('JSON inválido: ' + e2.message + '\nTexto: ' + txt.slice(0,300));
-      return safe;
-    }
+  if (!txt) throw new Error('No se recibió análisis. Respuesta vacía.');
+
+  // Parsear formato de secciones (sin JSON)
+  function extractSection(text, tag) {
+    const re = new RegExp(`##${tag}##([\\s\\S]*?)(?=##[A-Z_]+##|$)`);
+    const m = text.match(re);
+    return m ? m[1].trim() : '';
   }
+
+  const resumen = extractSection(txt, 'RESUMEN');
+  const ganadores = extractSection(txt, 'PATRONES_GANADORES');
+  const debiles = extractSection(txt, 'PATRONES_DEBILES');
+  const ganchos = extractSection(txt, 'GANCHOS');
+  const ctas = extractSection(txt, 'CTAS');
+  const recomendaciones = extractSection(txt, 'RECOMENDACIONES');
+  const proximos = extractSection(txt, 'PROXIMOS_GUIONES');
+
+  function parsePatrones(block) {
+    return block.split('\n').filter(l => l.trim().startsWith('-')).map(l => {
+      const parts = {};
+      l.replace(/^-\s*/, '').split('|').forEach(p => {
+        const [k, ...v] = p.split(':');
+        if (k && v.length) parts[k.trim().toLowerCase()] = v.join(':').trim();
+      });
+      return { patron: parts['patron']||parts['titulo']||l.slice(0,60), descripcion: parts['descripcion']||parts['razon']||'', ejemplos: parts['ejemplo'] ? [parts['ejemplo']] : [] };
+    }).filter(p => p.patron);
+  }
+
+  function parseProximos(block) {
+    return block.split('\n').filter(l => l.trim().startsWith('-')).map(l => {
+      const parts = {};
+      l.replace(/^-\s*/, '').split('|').forEach(p => {
+        const [k, ...v] = p.split(':');
+        if (k && v.length) parts[k.trim().toLowerCase()] = v.join(':').trim();
+      });
+      return { titulo: parts['titulo']||'', tema: parts['tema']||'', estructura: parts['estructura']||'', hook: parts['hook']||'', razon: parts['razon']||'' };
+    }).filter(p => p.titulo);
+  }
+
+  function parseGanchos(block) {
+    const obj = { mejor_estilo: '', peor_estilo: '', recomendacion: '' };
+    block.split('\n').forEach(l => {
+      if (l.startsWith('MEJOR:')) obj.mejor_estilo = l.replace('MEJOR:','').trim();
+      else if (l.startsWith('PEOR:')) obj.peor_estilo = l.replace('PEOR:','').trim();
+      else if (l.startsWith('RECOMENDACION:')) obj.recomendacion = l.replace('RECOMENDACION:','').trim();
+    });
+    return obj;
+  }
+
+  function parseCtas(block) {
+    const obj = { patron_dominante: '', recomendacion: '' };
+    block.split('\n').forEach(l => {
+      if (l.startsWith('PATRON:')) obj.patron_dominante = l.replace('PATRON:','').trim();
+      else if (l.startsWith('RECOMENDACION:')) obj.recomendacion = l.replace('RECOMENDACION:','').trim();
+    });
+    return obj;
+  }
+
+  return {
+    resumen_ejecutivo: resumen,
+    patrones_ganadores: parsePatrones(ganadores),
+    patrones_debiles: parsePatrones(debiles),
+    analisis_ganchos: parseGanchos(ganchos),
+    analisis_ctas: parseCtas(ctas),
+    recomendaciones: recomendaciones.split('\n').filter(l => l.trim().startsWith('-')).map(l => l.replace(/^-\s*/,'')).filter(Boolean),
+    proximos_guiones: parseProximos(proximos)
+  };
 }
 
 function renderIAResults(a, total, crossed, notionDates, metaDates) {
