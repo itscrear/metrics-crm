@@ -738,30 +738,58 @@ function toInt(val) {
 }
 
 function processCSV(rows) {
-  // Every row in Meta CSV is a publication (all have Fecha = "Total")
-  // Filter out empty rows
-  const posts = rows.filter(r => r['Identificador de la publicación'] || r['Enlace permanente']);
-  
-  if (!posts.length) {
-    document.getElementById('csv-preview').innerHTML = '<div class="err">No se encontraron publicaciones. Verificá que sea el archivo correcto de Meta Business Suite.</div>';
+  if (!rows.length) {
+    document.getElementById('csv-preview').innerHTML = '<div class="err">El archivo está vacío.</div>';
     return;
   }
 
-  // Calculate totals from all posts
+  // Mostrar columnas detectadas para diagnóstico
+  const cols = Object.keys(rows[0]);
+  console.log('[processCSV] Columnas detectadas:', cols);
+
+  // Detectar columnas clave con búsqueda flexible (por si hay espacios raros o encoding distinto)
+  const findCol = (keywords) => cols.find(c => keywords.some(k => c.toLowerCase().includes(k.toLowerCase())));
+
+  const COL_ID     = findCol(['Identificador','identificador']);
+  const COL_LINK   = findCol(['Enlace','enlace','permanente']);
+  const COL_HORA   = findCol(['Hora','hora','publicaci']);
+  const COL_TIPO   = findCol(['Tipo','tipo']);
+  const COL_DESC   = findCol(['Descripci','descripci']);
+  const COL_REACH  = findCol(['Alcance','alcance']);
+  const COL_VIEWS  = findCol(['Visualizaci','visualizaci']);
+  const COL_LIKES  = findCol(['gusta','Me gusta']);
+  const COL_SHARES = findCol(['compartió','compartio','Compartid']);
+  const COL_FOLLOW = findCol(['Seguimiento','seguimiento']);
+  const COL_COMM   = findCol(['Comentario','comentario']);
+  const COL_SAVES  = findCol(['guard','Guard']);
+
+  console.log('[processCSV] Mapeo:', { COL_ID, COL_LINK, COL_HORA, COL_REACH, COL_VIEWS, COL_LIKES });
+
+  // Filtrar filas válidas
+  const posts = rows.filter(r => (COL_ID && r[COL_ID]) || (COL_LINK && r[COL_LINK]));
+
+  if (!posts.length) {
+    document.getElementById('csv-preview').innerHTML = `
+      <div class="err">No se encontraron publicaciones.<br><br>
+      <strong>Columnas detectadas en el CSV:</strong><br>
+      <code style="font-size:11px">${cols.join(' | ')}</code>
+      </div>`;
+    return;
+  }
+
   const totals = posts.reduce((acc, r) => ({
-    reach:    acc.reach    + toInt(r['Alcance']),
-    views:    acc.views    + toInt(r['Visualizaciones']),
-    likes:    acc.likes    + toInt(r['Me gusta']),
-    shares:   acc.shares   + toInt(r['Veces que se compartió']),
-    follows:  acc.follows  + toInt(r['Seguimientos']),
-    comments: acc.comments + toInt(r['Comentarios']),
-    saves:    acc.saves    + toInt(r['Veces que se guardó']),
+    reach:    acc.reach    + toInt(COL_REACH  ? r[COL_REACH]  : 0),
+    views:    acc.views    + toInt(COL_VIEWS  ? r[COL_VIEWS]  : 0),
+    likes:    acc.likes    + toInt(COL_LIKES  ? r[COL_LIKES]  : 0),
+    shares:   acc.shares   + toInt(COL_SHARES ? r[COL_SHARES] : 0),
+    follows:  acc.follows  + toInt(COL_FOLLOW ? r[COL_FOLLOW] : 0),
+    comments: acc.comments + toInt(COL_COMM   ? r[COL_COMM]   : 0),
+    saves:    acc.saves    + toInt(COL_SAVES  ? r[COL_SAVES]  : 0),
   }), { reach:0, views:0, likes:0, shares:0, follows:0, comments:0, saves:0 });
 
-  // Get date range
-  const dates = posts.map(r => parseMetaDate(r['Hora de publicación'])).filter(Boolean).sort();
-  
-  csvData = { posts, totals, dateMin: dates[0], dateMax: dates[dates.length-1] };
+  const dates = posts.map(r => COL_HORA ? parseMetaDate(r[COL_HORA]) : null).filter(Boolean).sort();
+
+  csvData = { posts, totals, dateMin: dates[0]||null, dateMax: dates[dates.length-1]||null, cols: { COL_ID, COL_LINK, COL_HORA, COL_TIPO, COL_DESC, COL_REACH, COL_VIEWS, COL_LIKES, COL_SHARES, COL_FOLLOW, COL_COMM, COL_SAVES } };
 
   document.getElementById('csv-preview').innerHTML = `
     <div class="preview-box">
@@ -826,20 +854,21 @@ async function saveCSV() {
   console.log('[saveCSV] Período guardado OK. ID:', period.id);
 
   // 2. Guardar cada publicación
+  const c = csvData.cols || {};
   const toInsert = csvData.posts.map(r => ({
     client_id:   client.id,
     period_id:   period.id,
-    pub_date:    parseMetaDate(r['Hora de publicación']) || periodStart,
-    post_type:   r['Tipo de publicación'] || null,
-    link:        r['Enlace permanente'] || null,
-    description: r['Descripción'] || null,
-    reach:       toInt(r['Alcance']),
-    views:       toInt(r['Visualizaciones']),
-    likes:       toInt(r['Me gusta']),
-    comments:    toInt(r['Comentarios']),
-    shares:      toInt(r['Veces que se compartió']),
-    saves:       toInt(r['Veces que se guardó']),
-    follows:     toInt(r['Seguimientos']),
+    pub_date:    (c.COL_HORA ? parseMetaDate(r[c.COL_HORA]) : null) || periodStart,
+    post_type:   c.COL_TIPO  ? (r[c.COL_TIPO]  || null) : null,
+    link:        c.COL_LINK  ? (r[c.COL_LINK]  || null) : null,
+    description: c.COL_DESC  ? (r[c.COL_DESC]  || null) : null,
+    reach:       toInt(c.COL_REACH  ? r[c.COL_REACH]  : 0),
+    views:       toInt(c.COL_VIEWS  ? r[c.COL_VIEWS]  : 0),
+    likes:       toInt(c.COL_LIKES  ? r[c.COL_LIKES]  : 0),
+    comments:    toInt(c.COL_COMM   ? r[c.COL_COMM]   : 0),
+    shares:      toInt(c.COL_SHARES ? r[c.COL_SHARES] : 0),
+    saves:       toInt(c.COL_SAVES  ? r[c.COL_SAVES]  : 0),
+    follows:     toInt(c.COL_FOLLOW ? r[c.COL_FOLLOW] : 0),
   }));
 
   console.log('[saveCSV] Insertando', toInsert.length, 'posts. Primer post:', JSON.stringify(toInsert[0]));
