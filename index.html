@@ -501,8 +501,8 @@ async function openClient(id) {
        <button class="btn btn-danger btn-sm" onclick="confirmDeleteClient()">🗑️ Eliminar</button>`
     : '';
 
-  // Show IA tab if notion_database_id exists
-  document.getElementById('tab-ia').style.display = currentClient.notion_database_id ? 'block' : 'none';
+  // Show IA tab always
+  document.getElementById('tab-ia').style.display = 'block';
 
   await loadPeriods();
   switchTab('resumen');
@@ -584,7 +584,6 @@ function confirmDeleteClient() {
 async function loadPeriods() {
   const { data } = await db.from('metric_periods').select('*').eq('client_id', currentClient.id).order('period_label', { ascending: false });
   currentPeriods = data || [];
-  renderCargarTab();
 }
 
 // ============================================================
@@ -1015,6 +1014,16 @@ async function checkAlerts() {
 // ============================================================
 function renderIATab() {
   const el = document.getElementById('ia-content');
+  if (!currentClient.notion_database_id) {
+    el.innerHTML = `
+      <div class="ai-trigger-wrap">
+        <h3>✨ Análisis IA de contenido</h3>
+        <p>Para usar el análisis IA, necesitás cargar el <strong>Notion Database ID</strong> del cliente.<br>
+        Hacé clic en "Editar" y completá ese campo.</p>
+        <button class="btn btn-secondary" onclick="openEditClient()">✏️ Editar cliente</button>
+      </div>`;
+    return;
+  }
   el.innerHTML = `
     <div class="ai-trigger-wrap">
       <h3>✨ Análisis IA de contenido</h3>
