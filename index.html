@@ -699,7 +699,22 @@ function processCSV(rows) {
 
   parsedCSVData = {
     posts: validPosts,
-    totals: { reach: totalReach, impressions: totalImpressions, interactions: totalInteractions, new_followers: totalFollows, saves: totalSaves, shares: totalShares, total_posts: validPosts.length }
+    totals: {
+      reach: totalReach,
+      impressions: totalImpressions,
+      interactions: totalInteractions,
+      new_followers: totalFollows,
+      saves: totalSaves,
+      shares: totalShares,
+      total_posts: validPosts.length,
+      total_reach: totalReach,
+      total_views: totalImpressions,
+      total_likes: totalLikes,
+      total_comments: totalComments,
+      total_shares: totalShares,
+      total_saves: totalSaves,
+      total_follows: totalFollows,
+    }
   };
 
   document.getElementById('csv-preview-area').innerHTML = `
@@ -726,10 +741,23 @@ async function saveCSVPeriod() {
   const btn = document.getElementById('btn-save-csv');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Guardando...';
 
+  // Derive period_start and period_end from posts dates
+  const allDates = parsedCSVData.posts.map(r => {
+    const rawDate = r['Hora de publicación'] || r['Published'] || '';
+    if (!rawDate || !rawDate.includes('/')) return null;
+    const parts = rawDate.split(' ')[0].split('/');
+    if (parts.length !== 3) return null;
+    return `${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`;
+  }).filter(Boolean).sort();
+  const periodStart = allDates[0] || new Date().toISOString().split('T')[0];
+  const periodEnd = allDates[allDates.length - 1] || periodStart;
+
   // Save period
   const { data: period, error: pErr } = await db.from('metric_periods').insert({
     client_id: currentClient.id,
     period_label: label,
+    period_start: periodStart,
+    period_end: periodEnd,
     ...parsedCSVData.totals
   }).select().single();
 
