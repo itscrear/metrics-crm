@@ -908,32 +908,67 @@ async function saveCSV() {
 async function checkAlerts() {
   const now = new Date();
   const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const alerts = [];
+  const pending = [], upcoming = [];
+
   for (const c of clients) {
     if (!c.active || !c.start_date || new Date(c.start_date) > now) continue;
     const { data: pp } = await db.from('metric_periods').select('period_label').eq('client_id', c.id);
     const labels = (pp||[]).map(p => p.period_label.toLowerCase());
     const cm = months[now.getMonth()], cy = now.getFullYear();
+    const day = now.getDate();
+
     if (c.pieces_per_month === 30) {
-      if (now.getDate() >= 15 && !labels.some(l => (l.includes('1-15')||l.includes('primera')) && l.includes(cm)))
-        alerts.push(`⚠️ <strong>${c.name}</strong>: falta la 1ª quincena de ${cm} ${cy}`);
-      if (now.getDate() >= 28 && !labels.some(l => (l.includes('16')||l.includes('segunda')) && l.includes(cm)))
-        alerts.push(`⚠️ <strong>${c.name}</strong>: falta la 2ª quincena de ${cm} ${cy}`);
-    } else if (now.getDate() >= 3) {
+      // Quincenales: avisar el día 13 (próximos 2 días) y desde el 15 (vencido)
+      const falta1 = !labels.some(l => (l.includes('1-15')||l.includes('primera')) && l.includes(cm) && l.includes(String(cy)));
+      const falta2 = !labels.some(l => (l.includes('16')||l.includes('segunda')) && l.includes(cm) && l.includes(String(cy)));
+      if (falta1) {
+        if (day >= 15) pending.push({ name: c.name, msg: `1ª quincena de ${cm} ${cy}`, urgente: true });
+        else if (day >= 13) upcoming.push({ name: c.name, msg: `1ª quincena de ${cm} ${cy} — vence en ${15-day} días`, urgente: false });
+      }
+      if (falta2) {
+        if (day >= 28) pending.push({ name: c.name, msg: `2ª quincena de ${cm} ${cy}`, urgente: true });
+        else if (day >= 26) upcoming.push({ name: c.name, msg: `2ª quincena de ${cm} ${cy} — vence en ${28-day} días`, urgente: false });
+      }
+    } else {
+      // Mensuales: el mes anterior debería estar cargado a partir del día 3
       const pm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
       const py = now.getMonth() === 0 ? now.getFullYear()-1 : now.getFullYear();
-      if (!labels.some(l => l.includes(months[pm]) && l.includes(String(py))))
-        alerts.push(`⚠️ <strong>${c.name}</strong>: falta cargar ${months[pm]} ${py}`);
+      const faltaMes = !labels.some(l => l.includes(months[pm]) && l.includes(String(py)));
+      if (faltaMes && day >= 3) pending.push({ name: c.name, msg: `${months[pm]} ${py}`, urgente: day >= 10 });
+      // Avisar próximo cierre: desde el día 28
+      const faltaActual = !labels.some(l => l.includes(cm) && l.includes(String(cy)));
+      if (faltaActual && day >= 28) upcoming.push({ name: c.name, msg: `${cm} ${cy} — cierra en ${31-day} días`, urgente: false });
     }
   }
+
   const el = document.getElementById('alerts-box');
-  el.innerHTML = alerts.length ? `<div class="alert-box"><h3>📋 Métricas pendientes</h3>${alerts.map(a=>`<div class="alert-item">${a}</div>`).join('')}</div>` : '';
+  if (!pending.length && !upcoming.length) { el.innerHTML = ''; return; }
+
+  const pendingHtml = pending.length ? `
+    <div style="margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:#B91C1C;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">⚠️ Vencidas</div>
+      ${pending.map(a => `
+        <div class="alert-item" style="border-left:3px solid var(--danger)">
+          <strong>${a.name}</strong> — falta cargar <strong>${a.msg}</strong>
+        </div>`).join('')}
+    </div>` : '';
+
+  const upcomingHtml = upcoming.length ? `
+    <div>
+      <div style="font-size:12px;font-weight:700;color:#92400E;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px">🔔 Por vencer</div>
+      ${upcoming.map(a => `
+        <div class="alert-item" style="border-left:3px solid var(--accent);background:#FFFBEB">
+          <strong>${a.name}</strong> — ${a.msg}
+        </div>`).join('')}
+    </div>` : '';
+
+  el.innerHTML = `<div class="alert-box"><h3>📋 Métricas pendientes</h3>${pendingHtml}${upcomingHtml}</div>`;
 }
 
 // ═══════════════════════════════════════════
 // ANÁLISIS IA
 // ═══════════════════════════════════════════
-function renderIA() {
+async function renderIA() {
   const el = document.getElementById('c-ia');
   if (!client.notion_database_id) {
     el.innerHTML = `<div class="ai-center"><h3>✨ Análisis IA</h3>
@@ -941,18 +976,43 @@ function renderIA() {
       <button class="btn btn-s" onclick="openEditClient()">✏️ Editar cliente</button></div>`;
     return;
   }
+
+  // Calcular rango default: último mes completo
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const lastDay  = new Date(now.getFullYear(), now.getMonth(), 0);
+  const fmt = d => d.toISOString().split('T')[0];
+
   el.innerHTML = `
-    <div class="ai-center">
-      <h3>✨ Análisis IA de contenido</h3>
-      <p>Claude va a leer todos los guiones de Notion con estado "Subido",<br>
-      cruzarlos con las métricas por fecha y detectar qué funciona y qué no.</p>
-      <button class="btn btn-p" id="btn-ia-run" onclick="runIA()">🚀 Analizar con IA</button>
-      <div id="ia-prog" style="margin-top:24px;display:none">
+    <div style="padding:24px">
+      <div class="ai-center" style="margin-bottom:0">
+        <h3>✨ Análisis IA de contenido</h3>
+        <p>Claude cruza los guiones de Notion con las métricas de Meta para detectar qué funciona y qué no.</p>
+      </div>
+
+      <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px;margin:20px 0;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
+        <div class="fg" style="margin:0;flex:1;min-width:140px">
+          <label>Desde</label>
+          <input type="date" id="ia-from" value="${fmt(firstDay)}">
+        </div>
+        <div class="fg" style="margin:0;flex:1;min-width:140px">
+          <label>Hasta</label>
+          <input type="date" id="ia-to" value="${fmt(lastDay)}">
+        </div>
+        <button class="btn btn-p" id="btn-ia-run" onclick="runIA()">🚀 Analizar con IA</button>
+      </div>
+
+      <div id="ia-prog" style="display:none;margin-bottom:16px">
         <p id="ia-txt" style="color:var(--gray-500);font-size:14px;margin-bottom:8px"></p>
         <div class="pb-wrap"><div class="pb" id="ia-bar" style="width:0%"></div></div>
       </div>
-    </div>
-    <div id="ia-results"></div>`;
+      <div id="ia-results"></div>
+
+      <div id="ia-history" style="margin-top:32px"></div>
+    </div>`;
+
+  // Cargar análisis guardados
+  loadIAHistory();
 }
 
 function iaProgress(pct, txt) {
@@ -965,41 +1025,125 @@ async function runIA() {
   const btn = document.getElementById('btn-ia-run');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analizando...';
   document.getElementById('ia-results').innerHTML = '';
+  const dateFrom = document.getElementById('ia-from')?.value || '';
+  const dateTo   = document.getElementById('ia-to')?.value   || '';
   try {
     iaProgress(10, 'Conectando con Notion...');
-    const scripts = await getNotionScripts(client.notion_database_id);
-    if (!scripts.length) {
-      document.getElementById('ia-results').innerHTML = '<div class="empty"><h3>No se encontraron guiones con estado "Subido" en Notion</h3></div>';
-      btn.disabled = false; btn.innerHTML = '🚀 Analizar con IA'; return;
+    const allScripts = await getNotionScripts(client.notion_database_id);
+    if (!allScripts.length) {
+      document.getElementById('ia-results').innerHTML = '<div class="empty"><h3>No se encontraron guiones en Notion</h3></div>';
+      btn.disabled = false; btn.innerHTML = '🔄 Volver a analizar'; return;
     }
-    iaProgress(40, `${scripts.length} guiones encontrados. Cruzando con métricas...`);
-    const { data: allPosts } = await db.from('posts').select('pub_date,likes,saves,reach,shares,comments,views').eq('client_id', client.id);
+
+    // Filtrar por rango de fechas si están definidos
+    const scripts = (dateFrom && dateTo)
+      ? allScripts.filter(s => {
+          if (!s.upload_date) return true; // sin fecha siempre incluir
+          return s.upload_date >= dateFrom && s.upload_date <= dateTo;
+        })
+      : allScripts;
+
+    iaProgress(40, `${scripts.length} guiones en el período. Cruzando con métricas...`);
+
+    // Traer posts del período
+    let postsQuery = db.from('posts').select('pub_date,likes,saves,reach,shares,comments,views').eq('client_id', client.id);
+    if (dateFrom) postsQuery = postsQuery.gte('pub_date', dateFrom);
+    if (dateTo)   postsQuery = postsQuery.lte('pub_date', dateTo);
+    const { data: allPosts } = await postsQuery;
+
     const byDate = {};
     (allPosts||[]).forEach(p => { if (p.pub_date) byDate[p.pub_date] = p; });
 
-    // Cruce exacto por fecha
+    // Cruce por fecha
     const crossed = scripts.map(s => ({ ...s, metrics: s.upload_date ? byDate[s.upload_date] : null })).filter(s => s.metrics);
 
-    // Si no hay cruce, igual analizamos — mostramos debug de fechas
     const notionDates = scripts.map(s => s.upload_date).filter(Boolean);
-    const metaDates   = Object.keys(byDate);
+    const metaDates   = Object.keys(byDate).sort();
     console.log('[IA] Fechas Notion:', notionDates.slice(0,5), '| Fechas Meta:', metaDates.slice(0,5));
-    console.log('[IA] Columnas Notion detectadas:', scripts[0]?._cols || 'no info');
+    console.log('[IA] Columnas Notion:', scripts[0]?._cols);
+
+    // Mostrar diagnóstico de fechas si no hay cruces
+    if (!crossed.length && notionDates.length > 0 && metaDates.length > 0) {
+      document.getElementById('ia-results').innerHTML = `
+        <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#1E40AF">
+          🔍 <strong>Diagnóstico de fechas:</strong><br>
+          Notion (${notionDates.length} guiones con fecha): <code>${notionDates.slice(0,5).join(', ')}</code><br>
+          Meta posts (${metaDates.length} posts): <code>${metaDates.slice(0,5).join(', ')}</code><br>
+          ${notionDates.length && metaDates.length ? 'Verificá que las fechas de "Fecha subido" en Notion coincidan con las fechas de publicación en Meta.' : ''}
+        </div>`;
+    }
 
     const statusMsg = crossed.length
       ? `${crossed.length} piezas cruzadas. Enviando a Claude...`
       : `0 cruces (Notion: ${notionDates.length} fechas | Meta: ${metaDates.length} fechas). Analizando igual...`;
     iaProgress(65, statusMsg);
 
-    const analysis = await callClaude(scripts, crossed, allPosts||[]);
+    const analysis = await callClaude(scripts, crossed, allPosts||[], dateFrom, dateTo);
+    iaProgress(90, 'Guardando análisis...');
+
+    // Guardar en Supabase
+    await saveIAAnalysis(analysis, scripts.length, crossed.length, dateFrom, dateTo);
+
     iaProgress(95, 'Renderizando resultados...');
-    renderIAResults(analysis, scripts.length, crossed.length, notionDates, metaDates);
+    renderIAResults(analysis, scripts.length, crossed.length, notionDates, metaDates, dateFrom, dateTo);
     iaProgress(100, '¡Análisis completado!');
+    loadIAHistory(); // refrescar historial
   } catch(err) {
     document.getElementById('ia-results').innerHTML = `<div class="err">Error: ${err.message}</div>`;
     console.error(err);
   }
   btn.disabled = false; btn.innerHTML = '🔄 Volver a analizar';
+}
+
+async function saveIAAnalysis(analysis, totalScripts, crossedCount, dateFrom, dateTo) {
+  try {
+    const label = (dateFrom && dateTo) ? `${dateFrom} → ${dateTo}` : 'Sin filtro de fecha';
+    await db.from('ia_analyses').insert({
+      client_id:     client.id,
+      period_label:  label,
+      date_from:     dateFrom || null,
+      date_to:       dateTo   || null,
+      total_scripts: totalScripts,
+      crossed_count: crossedCount,
+      result:        analysis,
+      created_by:    user.id
+    });
+  } catch(e) {
+    console.warn('No se pudo guardar el análisis (tabla ia_analyses quizás no existe):', e.message);
+  }
+}
+
+async function loadIAHistory() {
+  const el = document.getElementById('ia-history');
+  if (!el) return;
+  const { data } = await db.from('ia_analyses')
+    .select('id,period_label,total_scripts,crossed_count,created_at,result')
+    .eq('client_id', client.id)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (!data?.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <h3 style="margin-bottom:12px;font-size:16px;font-weight:700">📂 Análisis anteriores</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${data.map(a => `
+        <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center"
+             onclick="showSavedAnalysis(${JSON.stringify(a.id)})">
+          <div>
+            <div style="font-weight:600;font-size:14px">${a.period_label}</div>
+            <div style="font-size:12px;color:var(--gray-500)">${a.total_scripts} guiones · ${a.crossed_count} cruzados · ${new Date(a.created_at).toLocaleDateString('es-AR')}</div>
+          </div>
+          <span style="color:var(--brand);font-size:13px">Ver →</span>
+        </div>`).join('')}
+    </div>`;
+  // guardar en memoria para acceso rápido
+  window._iaHistory = data;
+}
+
+function showSavedAnalysis(id) {
+  const a = (window._iaHistory||[]).find(x => x.id === id);
+  if (!a) return;
+  document.getElementById('ia-results').scrollIntoView({ behavior: 'smooth' });
+  renderIAResults(a.result, a.total_scripts, a.crossed_count, [], [], a.result._dateFrom, a.result._dateTo, `(análisis del ${new Date(a.created_at).toLocaleDateString('es-AR')})`);
 }
 
 async function getNotionScripts(dbId) {
@@ -1084,7 +1228,7 @@ function parseScripts(pages) {
   });
 }
 
-async function callClaude(scripts, crossed, allPosts) {
+async function callClaude(scripts, crossed, allPosts, dateFrom, dateTo) {
   const scriptsSummary = scripts.slice(0,60).map(s =>
     `- "${s.title}" | Tema: ${s.tema||'?'} | Formato: ${s.estructura||'?'} | Hook: ${s.hook||'?'} | CTA: ${s.cta||'?'} | Fecha: ${s.upload_date||'sin fecha'}`
   ).join('\n');
@@ -1103,7 +1247,8 @@ async function callClaude(scripts, crossed, allPosts) {
       `- Promedio alcance: ${Math.round(allPosts.reduce((a,p)=>a+(p.reach||0),0)/allPosts.length)}`
     : '';
 
-  const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${client.name}".
+  const periodoLabel = (dateFrom && dateTo) ? `del ${dateFrom} al ${dateTo}` : 'sin filtro de período';
+  const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${client.name}" (período: ${periodoLabel}).
 
 GUIONES DE NOTION (${scripts.length} total):
 ${scriptsSummary}
@@ -1245,7 +1390,10 @@ RECOMENDACION: qué mejorar
   };
 }
 
-function renderIAResults(a, total, crossed, notionDates, metaDates) {
+function renderIAResults(a, total, crossed, notionDates, metaDates, dateFrom, dateTo, extraLabel) {
+  const periodoHtml = (dateFrom && dateTo)
+    ? `<div style="background:var(--brand-light);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--brand);font-weight:600">📅 Período analizado: ${dateFrom} → ${dateTo} ${extraLabel||''}</div>`
+    : (extraLabel ? `<div style="background:var(--gray-100);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--gray-500)">${extraLabel}</div>` : '');
   const debugHtml = crossed === 0 && (notionDates?.length||0) > 0 ? `
     <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400E">
       ⚠️ <strong>0 cruces por fecha.</strong> Notion tiene ${notionDates?.length||0} fechas (ej: ${notionDates?.slice(0,2).join(', ')||'—'}).
@@ -1253,6 +1401,7 @@ function renderIAResults(a, total, crossed, notionDates, metaDates) {
       El análisis se basó en patrones generales de guiones + métricas promedio.
     </div>` : '';
   document.getElementById('ia-results').innerHTML = `
+    ${periodoHtml}
     ${debugHtml}
     <div class="text-sm text-muted" style="margin-bottom:16px"><strong>${total}</strong> guiones · <strong>${crossed}</strong> cruzados con métricas</div>
     <div class="ai-summary"><p><strong>📋 Resumen ejecutivo</strong><br><br>${a.resumen_ejecutivo||''}</p></div>
