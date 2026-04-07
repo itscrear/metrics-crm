@@ -890,49 +890,20 @@ async function fetchNotionScripts(databaseId) {
     page_size: 100
   });
 
-  // Try direct call first (works in some environments)
-  try {
-    const res = await fetch(`https://api.notion.com/v1/databases/${fmtId}/query`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${NOTION_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Notion-Version': NOTION_VERSION,
-      },
-      body
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return parseNotionScripts(data.results);
-    }
-  } catch(e) {
-    // CORS blocked, fall through to proxy
-  }
-
-  // Fallback: use allorigins.win as CORS proxy
-  const notionUrl = `https://api.notion.com/v1/databases/${fmtId}/query`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(notionUrl)}`;
-
-  // allorigins doesn't support POST with custom headers, so we use a different approach
-  // Use cors.sh proxy
-  const corsProxy = 'https://cors.sh/';
-  const res2 = await fetch(`${corsProxy}${notionUrl}`, {
+  // Call via Supabase Edge Function proxy (avoids CORS issues)
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/quick-processor`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${NOTION_TOKEN}`,
       'Content-Type': 'application/json',
-      'Notion-Version': NOTION_VERSION,
-      'x-cors-api-key': 'temp_' + Math.random().toString(36).slice(2),
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
     },
-    body
+    body: JSON.stringify({ databaseId: fmtId, notionToken: NOTION_TOKEN })
   });
 
-  if (!res2.ok) {
-    const errText = await res2.text();
-    throw new Error(`No se pudo conectar con Notion (CORS bloqueado). Contactá al administrador. Detalle: ${res2.status}`);
-  }
-  const data2 = await res2.json();
-  return parseNotionScripts(data2.results);
+  if (!res.ok) throw new Error(`Error conectando con Notion: ${res.status} — ${await res.text()}`);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return parseNotionScripts(data.results);
 }
 
 function parseNotionScripts(pages) {
