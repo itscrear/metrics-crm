@@ -285,7 +285,7 @@ tr:hover td { background:var(--gray-50); }
 // ═══════════════════════════════════════════
 const SB_URL  = 'https://qpvgvzjgcwosjwnblydz.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwdmd2empnY3dvc2p3bmJseWR6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNjI3NDIsImV4cCI6MjA4OTYzODc0Mn0.bBqUQV9OqF5-OwDyc_5agn3MMkYjUpWXa_i7hKaR5kY';
-const NOTION  = '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';
+const NOTION  = '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';
 const CLAUDE  = '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';
 const EDGE_FN = `${SB_URL}/functions/v1/quick-processor`;
 
@@ -969,11 +969,24 @@ async function runIA() {
     const { data: allPosts } = await db.from('posts').select('pub_date,likes,saves,reach,shares,comments,views').eq('client_id', client.id);
     const byDate = {};
     (allPosts||[]).forEach(p => { if (p.pub_date) byDate[p.pub_date] = p; });
+
+    // Cruce exacto por fecha
     const crossed = scripts.map(s => ({ ...s, metrics: s.upload_date ? byDate[s.upload_date] : null })).filter(s => s.metrics);
-    iaProgress(65, `${crossed.length} piezas cruzadas. Enviando a Claude...`);
-    const analysis = await callClaude(scripts, crossed);
+
+    // Si no hay cruce, igual analizamos — mostramos debug de fechas
+    const notionDates = scripts.map(s => s.upload_date).filter(Boolean);
+    const metaDates   = Object.keys(byDate);
+    console.log('[IA] Fechas Notion:', notionDates.slice(0,5), '| Fechas Meta:', metaDates.slice(0,5));
+    console.log('[IA] Columnas Notion detectadas:', scripts[0]?._cols || 'no info');
+
+    const statusMsg = crossed.length
+      ? `${crossed.length} piezas cruzadas. Enviando a Claude...`
+      : `0 cruces (Notion: ${notionDates.length} fechas | Meta: ${metaDates.length} fechas). Analizando igual...`;
+    iaProgress(65, statusMsg);
+
+    const analysis = await callClaude(scripts, crossed, allPosts||[]);
     iaProgress(95, 'Renderizando resultados...');
-    renderIAResults(analysis, scripts.length, crossed.length);
+    renderIAResults(analysis, scripts.length, crossed.length, notionDates, metaDates);
     iaProgress(100, '¡Análisis completado!');
   } catch(err) {
     document.getElementById('ia-results').innerHTML = `<div class="err">Error: ${err.message}</div>`;
@@ -1010,41 +1023,67 @@ function parseScripts(pages) {
       if (p.type==='status') return p.status?.name||null;
       return null;
     };
+    // Buscar fecha en CUALQUIER columna de tipo date (no solo por nombre)
     let uploadDate = null;
-    for (const k of Object.keys(pp)) {
-      if (k.toLowerCase().includes('fecha')||k.toLowerCase().includes('subido')||k.toLowerCase().includes('date')) {
-        const v = g(pp[k]);
-        if (v && /\d{4}-\d{2}-\d{2}/.test(v)) { uploadDate = v; break; }
+    const colNames = Object.keys(pp);
+    // Primero buscar por tipo date directamente
+    for (const k of colNames) {
+      if (pp[k].type === 'date' && pp[k].date?.start) {
+        uploadDate = pp[k].date.start.split('T')[0]; // solo YYYY-MM-DD
+        break;
       }
     }
-    const tk = Object.keys(pp).find(k => pp[k].type==='title');
+    // Si no encontró, buscar por nombre
+    if (!uploadDate) {
+      for (const k of colNames) {
+        const v = g(pp[k]);
+        if (v && /\d{4}-\d{2}-\d{2}/.test(v)) { uploadDate = v.split('T')[0]; break; }
+      }
+    }
+    const tk = colNames.find(k => pp[k].type==='title');
     return {
-      title:     g(pp[tk]) || 'Sin título',
-      tema:      g(pp['Tema']||pp['Ángulo']||pp['Angulo']||pp['Pilar']),
-      estructura:g(pp['Estructura']||pp['Formato']||pp['Tipo']),
-      cta:       g(pp['CTA']||pp['Call to action']),
-      hook:      g(pp['Hook']||pp['Gancho']),
-      pilar:     g(pp['Pilar']||pp['Categoría']||pp['Categoria']),
+      title:      g(pp[tk]) || 'Sin título',
+      tema:       g(pp['Tema']||pp['Ángulo']||pp['Angulo']||pp['Pilar']||pp['Nicho']),
+      estructura: g(pp['Estructura']||pp['Formato']||pp['Tipo']||pp['Estilo']),
+      cta:        g(pp['CTA']||pp['Call to action']||pp['Llamada']),
+      hook:       g(pp['Hook']||pp['Gancho']||pp['Intro']),
+      pilar:      g(pp['Pilar']||pp['Categoría']||pp['Categoria']||pp['Pilares']),
       upload_date: uploadDate,
+      _cols:      colNames.join(', '),
     };
   });
 }
 
-async function callClaude(scripts, crossed) {
+async function callClaude(scripts, crossed, allPosts) {
   const scriptsSummary = scripts.slice(0,60).map(s =>
-    `- "${s.title}" | Tema: ${s.tema||'?'} | Formato: ${s.estructura||'?'} | Hook: ${s.hook||'?'} | CTA: ${s.cta||'?'}`
+    `- "${s.title}" | Tema: ${s.tema||'?'} | Formato: ${s.estructura||'?'} | Hook: ${s.hook||'?'} | CTA: ${s.cta||'?'} | Fecha: ${s.upload_date||'sin fecha'}`
   ).join('\n');
-  const crossedSummary = crossed.slice(0,40).map(s =>
-    `- "${s.title}" → Likes:${s.metrics.likes||0} Guardados:${s.metrics.saves||0} Alcance:${s.metrics.reach||0} Compartidos:${s.metrics.shares||0} | Tema:${s.tema||'?'} | Formato:${s.estructura||'?'} | Hook:${s.hook||'?'}`
-  ).join('\n');
+
+  const crossedSummary = crossed.length
+    ? crossed.slice(0,40).map(s =>
+        `- "${s.title}" → Likes:${s.metrics.likes||0} Guardados:${s.metrics.saves||0} Alcance:${s.metrics.reach||0} Compartidos:${s.metrics.shares||0} | Tema:${s.tema||'?'} | Formato:${s.estructura||'?'} | Hook:${s.hook||'?'}`
+      ).join('\n')
+    : 'No hay cruces exactos por fecha aún.';
+
+  // Resumen de métricas generales aunque no haya cruce
+  const metaSummary = allPosts.length
+    ? `MÉTRICAS GENERALES (${allPosts.length} publicaciones en Meta):\n` +
+      `- Promedio likes: ${Math.round(allPosts.reduce((a,p)=>a+(p.likes||0),0)/allPosts.length)}\n` +
+      `- Promedio guardados: ${Math.round(allPosts.reduce((a,p)=>a+(p.saves||0),0)/allPosts.length)}\n` +
+      `- Promedio alcance: ${Math.round(allPosts.reduce((a,p)=>a+(p.reach||0),0)/allPosts.length)}`
+    : '';
 
   const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${client.name}".
 
-GUIONES (${scripts.length} total):
+GUIONES DE NOTION (${scripts.length} total, estado "Subido"):
 ${scriptsSummary}
 
-GUIONES CON MÉTRICAS REALES (${crossed.length} piezas cruzadas por fecha):
+GUIONES CRUZADOS CON MÉTRICAS POR FECHA (${crossed.length} piezas):
 ${crossedSummary}
+
+${metaSummary}
+
+IMPORTANTE: Si hay pocos o ningún cruce, igual analizá los patrones de los guiones (temas, hooks, formatos) y combinalo con las métricas generales disponibles. Dame recomendaciones accionables de todas formas.
 
 Devolvé SOLO un JSON válido con esta estructura exacta:
 {
@@ -1057,21 +1096,30 @@ Devolvé SOLO un JSON válido con esta estructura exacta:
   "proximos_guiones": [{"titulo": "...", "tema": "...", "estructura": "...", "hook": "...", "razon": "..."}]
 }`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  // Llamar a Claude via Edge Function para no exponer el API key en el frontend
+  const res = await fetch(EDGE_FN, {
     method: 'POST',
-    headers: { 'x-api-key': CLAUDE, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-allow-browser': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 4000, messages: [{ role:'user', content: prompt }] })
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
+    body: JSON.stringify({ action: 'claude', claudeKey: CLAUDE, prompt })
   });
-  if (!res.ok) throw new Error(`Claude API: ${res.status}`);
+  if (!res.ok) throw new Error(`Edge Function error: ${res.status} — ${await res.text()}`);
   const d = await res.json();
-  const txt = d.content[0].text;
+  if (d.error) throw new Error(d.error);
+  const txt = d.text || d.content?.[0]?.text || '';
   const m = txt.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('Claude no devolvió JSON válido');
+  if (!m) throw new Error('No se recibió análisis válido. Respuesta: ' + txt.slice(0,200));
   return JSON.parse(m[0]);
 }
 
-function renderIAResults(a, total, crossed) {
+function renderIAResults(a, total, crossed, notionDates, metaDates) {
+  const debugHtml = crossed === 0 && (notionDates?.length||0) > 0 ? `
+    <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400E">
+      ⚠️ <strong>0 cruces por fecha.</strong> Notion tiene ${notionDates?.length||0} fechas (ej: ${notionDates?.slice(0,2).join(', ')||'—'}).
+      Meta tiene ${metaDates?.length||0} fechas (ej: ${metaDates?.slice(0,2).join(', ')||'—'}).
+      El análisis se basó en patrones generales de guiones + métricas promedio.
+    </div>` : '';
   document.getElementById('ia-results').innerHTML = `
+    ${debugHtml}
     <div class="text-sm text-muted" style="margin-bottom:16px"><strong>${total}</strong> guiones · <strong>${crossed}</strong> cruzados con métricas</div>
     <div class="ai-summary"><p><strong>📋 Resumen ejecutivo</strong><br><br>${a.resumen_ejecutivo||''}</p></div>
     <div class="ai-grid">
