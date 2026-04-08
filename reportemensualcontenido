@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reporte Mensual de Contenido</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #242424;
+    --border: #2e2e2e;
+    --accent: #7c5cfc;
+    --accent2: #a78bfa;
+    --green: #22c55e;
+    --orange: #f97316;
+    --red: #ef4444;
+    --text: #f1f1f1;
+    --muted: #888;
+    --card-radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  /* ── UPLOAD SCREEN ── */
+  #upload-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+    gap: 32px;
+  }
+  .upload-header { text-align: center; }
+  .upload-header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+  .upload-header p { color: var(--muted); font-size: 1rem; }
+  .upload-cards {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+    max-width: 700px;
+  }
+  .upload-card {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: var(--card-radius);
+    padding: 32px 28px;
+    flex: 1;
+    min-width: 280px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    text-align: center;
+  }
+  .upload-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .upload-card.loaded { border-color: var(--green); border-style: solid; }
+  .upload-card .icon { font-size: 2.5rem; margin-bottom: 12px; }
+  .upload-card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
+  .upload-card p { font-size: 0.82rem; color: var(--muted); }
+  .upload-card .file-name { font-size: 0.8rem; color: var(--green); margin-top: 10px; font-weight: 500; }
+  input[type="file"] { display: none; }
+  .btn-generate {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 14px 40px;
+    border-radius: 30px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .btn-generate.ready { opacity: 1; pointer-events: all; }
+  .btn-generate:hover { transform: scale(1.03); }
+
+  /* ── REPORT SCREEN ── */
+  #report-screen { display: none; padding: 40px 24px; max-width: 1100px; margin: 0 auto; }
+
+  .report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .report-title h1 { font-size: 1.8rem; font-weight: 700; }
+  .report-title p { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+  .btn-back {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+  }
+  .btn-back:hover { background: var(--border); }
+
+  /* ── SECTION ── */
+  .section { margin-bottom: 40px; }
+  .section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── KPI GRID ── */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border-radius: var(--card-radius);
+    padding: 20px 18px;
+    border: 1px solid var(--border);
+  }
+  .kpi-card .kpi-label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .kpi-card .kpi-value { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+  .kpi-card .kpi-sub { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+  /* ── CHARTS ROW ── */
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface);
+    border-radius: var(--card-radius);
+    padding: 20px;
+    border: 1px solid var(--border);
+  }
+  .chart-card h4 { font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; font-weight: 500; }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* ── TABLE ── */
+  .table-wrap { overflow-x: auto; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--muted);
+    font-weight: 600;
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+  .badge-reel { background: rgba(124,92,252,0.2); color: var(--accent2); }
+  .badge-carousel { background: rgba(249,115,22,0.2); color: var(--orange); }
+  .badge-autoridad { background: rgba(34,197,94,0.15); color: var(--green); }
+  .badge-relacionable { background: rgba(249,115,22,0.15); color: var(--orange); }
+  .badge-educacion { background: rgba(59,130,246,0.2); color: #60a5fa; }
+  .badge-default { background: var(--surface2); color: var(--muted); }
+  .rank { font-size: 0.95rem; font-weight: 700; color: var(--muted); }
+  .rank-1 { color: gold; }
+  .rank-2 { color: silver; }
+  .rank-3 { color: #cd7f32; }
+  .link-icon { color: var(--accent2); text-decoration: none; font-size: 0.8rem; }
+  .link-icon:hover { text-decoration: underline; }
+
+  /* ── PATTERNS ── */
+  .patterns-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  /* legacy card (fallback) */
+  .pattern-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 18px 20px;
+  }
+  .pattern-card .pattern-icon { font-size: 1.4rem; margin-bottom: 8px; }
+  .pattern-card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 6px; }
+  .pattern-card p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+  .pattern-card .highlight { color: var(--accent2); font-weight: 600; }
+
+  /* new pattern blocks */
+  .pattern-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 20px 22px;
+  }
+  .pattern-block-title {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    letter-spacing: 0.01em;
+  }
+  .pattern-rows { display: flex; flex-direction: column; gap: 10px; }
+  .pattern-row {
+    display: grid;
+    grid-template-columns: 1fr 120px 64px;
+    align-items: center;
+    gap: 10px;
+  }
+  .pattern-row-best .pattern-row-name { color: var(--text); font-weight: 600; }
+  .pattern-row-label { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .pattern-row-name { font-size: 0.85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pattern-row-count { font-size: 0.72rem; color: #555; }
+  .pattern-bar-wrap { height: 6px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+  .pattern-bar { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+  .pattern-row-val { font-size: 0.82rem; font-weight: 600; color: var(--text); text-align: right; white-space: nowrap; }
+
+  /* ── NEXT STEPS ── */
+  .steps-list { display: flex; flex-direction: column; gap: 12px; }
+  .step-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--card-radius);
+    padding: 14px 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .step-num {
+    background: var(--accent);
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .step-item h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 3px; }
+  .step-item p { font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+
+  /* ── CLIENT HEADER ── */
+  .client-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 20px 28px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+  }
+  .client-avatar {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .client-info h2 { font-size: 1.15rem; font-weight: 700; }
+  .client-info p { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+  .client-username { color: var(--accent2); font-weight: 500; }
+
+  /* ── MATCH INFO ── */
+  .match-banner {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+  .match-banner span { color: var(--green); font-weight: 600; }
+
+  /* PRINT */
+  @media print {
+    body { background: #fff; color: #111; }
+    .btn-back, .btn-generate { display: none; }
+    #upload-screen { display: none !important; }
+    #report-screen { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- UPLOAD SCREEN -->
+<div id="upload-screen">
+  <div class="upload-header">
+    <h1>📊 Reporte Mensual de Contenido</h1>
+    <p>Cargá tus archivos de Meta y Notion para generar el análisis</p>
+  </div>
+
+  <div class="upload-cards">
+    <div class="upload-card" id="meta-card" onclick="document.getElementById('meta-input').click()">
+      <div class="icon">📈</div>
+      <h3>CSV de Meta</h3>
+      <p>Exportación de Meta Business Suite con métricas de publicaciones</p>
+      <div class="file-name" id="meta-filename">Sin archivo</div>
+      <input type="file" id="meta-input" accept=".csv">
+    </div>
+
+    <div class="upload-card" id="notion-card" onclick="document.getElementById('notion-input').click()">
+      <div class="icon">📝</div>
+      <h3>CSV de Notion</h3>
+      <p>Base de datos de guiones exportada desde Notion como CSV</p>
+      <div class="file-name" id="notion-filename">Sin archivo</div>
+      <input type="file" id="notion-input" accept=".csv">
+    </div>
+  </div>
+
+  <button class="btn-generate" id="btn-generate" onclick="generateReport()">Generar Reporte →</button>
+</div>
+
+<!-- REPORT SCREEN -->
+<div id="report-screen">
+  <div class="report-header">
+    <div class="report-title">
+      <h1 id="report-title">Reporte Mensual</h1>
+      <p id="report-subtitle"></p>
+    </div>
+    <button class="btn-back" onclick="goBack()">← Cargar otros archivos</button>
+  </div>
+
+  <!-- CLIENT HEADER -->
+  <div class="client-header" id="client-header">
+    <div class="client-avatar" id="client-avatar">?</div>
+    <div class="client-info">
+      <h2 id="client-name">—</h2>
+      <p><span class="client-username" id="client-username"></span></p>
+    </div>
+  </div>
+
+  <!-- 1. KPIs -->
+  <div class="section">
+    <div class="section-title">Resumen General</div>
+    <div class="kpi-grid" id="kpi-grid"></div>
+  </div>
+
+  <!-- 2. Charts -->
+  <div class="section">
+    <div class="section-title">Performance por Formato y Pilar</div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <h4>Alcance promedio por tipo de contenido</h4>
+        <div class="chart-wrap"><canvas id="chart-tipo"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <h4>Alcance por pilar de contenido</h4>
+        <div class="chart-wrap"><canvas id="chart-pilar"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Top Posts -->
+  <div class="section">
+    <div class="section-title">Top Posts del Mes</div>
+    <div class="match-banner" id="match-banner"></div>
+    <div class="table-wrap">
+      <table id="top-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Guión / Contenido</th>
+            <th>Tipo</th>
+            <th>Pilar</th>
+            <th>Ángulo</th>
+            <th>Alcance</th>
+            <th>Views</th>
+            <th>Likes</th>
+            <th>Guardados</th>
+            <th>Engagement</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody id="top-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 4. Full table -->
+  <div class="section">
+    <div class="section-title">Todas las Publicaciones</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Guión / Descripción</th>
+            <th>Tipo</th>
+            <th>Pilar</th>
+            <th>Ángulo</th>
+            <th>Alcance</th>
+            <th>Views</th>
+            <th>Likes</th>
+            <th>Guardados</th>
+            <th>Engagement</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody id="all-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 5. Patterns -->
+  <div class="section">
+    <div class="section-title">Patrones Identificados</div>
+    <div class="patterns-grid" id="patterns-grid"></div>
+  </div>
+
+  <!-- 6. Next Steps -->
+  <div class="section">
+    <div class="section-title">Próximos Pasos Sugeridos</div>
+    <div class="steps-list" id="steps-list"></div>
+  </div>
+</div>
+
+<script>
+let metaData = null, notionData = null;
+let chartTipo = null, chartPilar = null;
+
+// ── FILE LOADING ──
+document.getElementById('meta-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: res => {
+      metaData = res.data;
+      document.getElementById('meta-filename').textContent = file.name;
+      document.getElementById('meta-card').classList.add('loaded');
+      checkReady();
+    }
+  });
+});
+
+document.getElementById('notion-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  Papa.parse(file, {
+    header: true, skipEmptyLines: true,
+    complete: res => {
+      notionData = res.data;
+      document.getElementById('notion-filename').textContent = file.name;
+      document.getElementById('notion-card').classList.add('loaded');
+      checkReady();
+    }
+  });
+});
+
+function checkReady() {
+  const btn = document.getElementById('btn-generate');
+  if (metaData && notionData) btn.classList.add('ready');
+}
+
+function goBack() {
+  document.getElementById('report-screen').style.display = 'none';
+  document.getElementById('upload-screen').style.display = 'flex';
+}
+
+// ── HELPERS ──
+function parseMetaDate(str) {
+  // "03/11/2026 15:58" → Date
+  if (!str) return null;
+  const [datePart] = str.split(' ');
+  const [m, d, y] = datePart.split('/');
+  return new Date(+y, +m - 1, +d);
+}
+
+function parseNotionDate(str) {
+  // Soporta múltiples formatos sin depender de UTC para evitar offset en Argentina (UTC-3):
+  // "2026-03-11" | "March 11, 2026" | "11/03/2026" | "11 de marzo de 2026"
+  if (!str) return null;
+  const s = str.trim();
+
+  // ISO "2026-03-11" → extraer partes manualmente (new Date("ISO") usa UTC y da offset)
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return new Date(+iso[1], +iso[2] - 1, +iso[3]);
+
+  // DD/MM/YYYY o DD-MM-YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmy) return new Date(+dmy[3], +dmy[2] - 1, +dmy[1]);
+
+  // "11 de marzo de 2026" (español)
+  const esMonths = { enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,octubre:9,noviembre:10,diciembre:11 };
+  const named = s.toLowerCase().match(/(\d{1,2})\s+de\s+(\w+)\s+de\s+(\d{4})/);
+  if (named && esMonths[named[2]] !== undefined) return new Date(+named[3], esMonths[named[2]], +named[1]);
+
+  // "March 11, 2026" (inglés) — texto no ISO, los browsers lo parsean como hora local
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function dateKey(date) {
+  if (!date) return null;
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function num(v) { return parseInt(String(v).replace(/,/g,'')) || 0; }
+
+function fmtNum(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n.toLocaleString('es-AR');
+}
+
+function badgeTipo(tipo) {
+  if (!tipo) return `<span class="badge badge-default">—</span>`;
+  const t = tipo.toLowerCase();
+  if (t.includes('reel')) return `<span class="badge badge-reel">Reel</span>`;
+  if (t.includes('secuencia') || t.includes('carrusel')) return `<span class="badge badge-carousel">Carrusel</span>`;
+  return `<span class="badge badge-default">${tipo}</span>`;
+}
+
+function badgePilar(pilar) {
+  if (!pilar) return `<span class="badge badge-default">—</span>`;
+  const p = pilar.toLowerCase();
+  if (p.includes('autoridad')) return `<span class="badge badge-autoridad">${pilar}</span>`;
+  if (p.includes('relacionable')) return `<span class="badge badge-relacionable">${pilar}</span>`;
+  if (p.includes('educaci')) return `<span class="badge badge-educacion">${pilar}</span>`;
+  return `<span class="badge badge-default">${pilar}</span>`;
+}
+
+function truncate(str, n=50) {
+  if (!str) return '—';
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+function getNotionName(row) {
+  // Try common column names for the title
+  return row['Nombre de la tarea'] || row['Name'] || row['Nombre'] || row['Título'] || row['Title'] || '';
+}
+
+// ── MAIN ──
+function generateReport() {
+  document.getElementById('upload-screen').style.display = 'none';
+  document.getElementById('report-screen').style.display = 'block';
+
+  // Detección flexible de columnas de Meta (español e inglés)
+  const metaCols = Object.keys(metaData[0] || {});
+  const findMetaCol = (...keywords) => metaCols.find(c => keywords.some(k => c.toLowerCase().includes(k.toLowerCase()))) || '';
+  const COL_HORA   = findMetaCol('Hora de publicación', 'Publication time', 'Post time', 'Time published', 'publicaci');
+  const COL_TIPO   = findMetaCol('Tipo de publicación', 'Post type', 'Content type', 'tipo');
+  const COL_DESC   = findMetaCol('Descripción', 'Description', 'descripci');
+  const COL_LINK   = findMetaCol('Enlace permanente', 'Permalink', 'Link', 'enlace');
+  const COL_REACH  = findMetaCol('Alcance', 'Reach', 'alcance');
+  const COL_VIEWS  = findMetaCol('Visualizaciones', 'Impressions', 'Views', 'visualizaci');
+  const COL_LIKES  = findMetaCol('Me gusta', 'Likes', 'gusta');
+  const COL_COMM   = findMetaCol('Comentarios', 'Comments', 'comentario');
+  const COL_SHARES = findMetaCol('Veces que se compartió', 'Shares', 'compartió', 'compartio');
+  const COL_SAVES  = findMetaCol('Veces que se guardó', 'Saves', 'guardó', 'guardo');
+  const COL_FOLLOW = findMetaCol('Seguimientos', 'Follows', 'seguimiento');
+  const COL_ACCNAME= findMetaCol('Nombre de la cuenta', 'Account name', 'Account Name');
+  const COL_ACCUSER= findMetaCol('Nombre de usuario de la cuenta', 'Account username', 'Username');
+
+  // Detección flexible de columna de fecha en Notion CSV
+  const notionCols = Object.keys(notionData[0] || {});
+  const findNotionDateCol = () => notionCols.find(c => {
+    const cl = c.toLowerCase();
+    return cl.includes('fecha') || cl.includes('date') || cl.includes('publicad') || cl.includes('subido') || cl.includes('subida');
+  }) || '';
+  const NOTION_DATE_COL = findNotionDateCol();
+
+  // 1. Build Notion lookup by date
+  const notionByDate = {};
+  notionData.forEach(row => {
+    const rawDate = NOTION_DATE_COL ? row[NOTION_DATE_COL] : null;
+    const d = parseNotionDate(rawDate);
+    if (!d) return;
+    const k = dateKey(d);
+    if (!notionByDate[k]) notionByDate[k] = [];
+    notionByDate[k].push(row);
+  });
+
+  // 2. Merge Meta + Notion
+  const posts = metaData.map(row => {
+    const pubDate = COL_HORA ? parseMetaDate(row[COL_HORA]) : null;
+    const k = dateKey(pubDate);
+    const notionMatches = notionByDate[k] || [];
+
+    // Try to find best match by format
+    const metaTipo = (COL_TIPO ? row[COL_TIPO] : '').toLowerCase();
+    let notion = null;
+    if (notionMatches.length === 1) {
+      notion = notionMatches[0];
+    } else if (notionMatches.length > 1) {
+      notion = notionMatches.find(n => {
+        const fmt = (n['Formato'] || '').toLowerCase();
+        if (metaTipo.includes('reel') && (fmt.includes('reel') || fmt.includes('video'))) return true;
+        if ((metaTipo.includes('secuencia') || metaTipo.includes('carrusel')) && fmt.includes('carrusel')) return true;
+        return false;
+      }) || notionMatches[0];
+    }
+
+    const alcance = num(COL_REACH  ? row[COL_REACH]  : 0);
+    const views   = num(COL_VIEWS  ? row[COL_VIEWS]  : 0);
+    const likes   = num(COL_LIKES  ? row[COL_LIKES]  : 0);
+    const comments= num(COL_COMM   ? row[COL_COMM]   : 0);
+    const shares  = num(COL_SHARES ? row[COL_SHARES] : 0);
+    const saves   = num(COL_SAVES  ? row[COL_SAVES]  : 0);
+    const follows = num(COL_FOLLOW ? row[COL_FOLLOW] : 0);
+    const interactions = likes + comments + shares + saves;
+    const engagement = alcance > 0 ? ((interactions / alcance) * 100).toFixed(2) : '0.00';
+
+    return {
+      pubDate,
+      tipo: (COL_TIPO ? row[COL_TIPO] : '') || '',
+      descripcion: (COL_DESC ? row[COL_DESC] : '') || '',
+      link: (COL_LINK ? row[COL_LINK] : '') || '',
+      alcance, views, likes, comments, shares, saves, follows,
+      interactions, engagement: parseFloat(engagement),
+      notion,
+      scriptName: notion ? getNotionName(notion) : '',
+      pilar: notion ? (notion['Pilar de contenido'] || '') : '',
+      angulo: notion ? (notion['Angulo'] || '') : '',
+      formato: notion ? (notion['Formato'] || '') : '',
+      cta: notion ? (notion['Tiene CTA'] || '') : '',
+    };
+  }).filter(p => p.pubDate);
+
+  // Sort by date
+  posts.sort((a,b) => a.pubDate - b.pubDate);
+
+  // Detect period
+  const dates = posts.map(p => p.pubDate);
+  const minDate = new Date(Math.min(...dates));
+  const maxDate = new Date(Math.max(...dates));
+  const fmtDate = d => d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' });
+  document.getElementById('report-title').textContent = `Reporte de Contenido`;
+  document.getElementById('report-subtitle').textContent = `Del ${fmtDate(minDate)} al ${fmtDate(maxDate)} · ${posts.length} publicaciones`;
+
+  // Client header from Meta CSV (usando columnas detectadas)
+  const clientRow = metaData[0] || {};
+  const clientName = COL_ACCNAME ? clientRow[COL_ACCNAME] : '';
+  const clientUser = COL_ACCUSER ? clientRow[COL_ACCUSER] : '';
+  document.getElementById('client-name').textContent = clientName || 'Cliente';
+  document.getElementById('client-username').textContent = clientUser ? `@${clientUser}` : '';
+  document.getElementById('client-avatar').textContent = clientName ? clientName.trim()[0].toUpperCase() : '?';
+
+  // 3. KPIs
+  const totalAlcance = posts.reduce((s,p) => s + p.alcance, 0);
+  const totalViews = posts.reduce((s,p) => s + p.views, 0);
+  const totalLikes = posts.reduce((s,p) => s + p.likes, 0);
+  const totalSaves = posts.reduce((s,p) => s + p.saves, 0);
+  const totalFollows = posts.reduce((s,p) => s + p.follows, 0);
+  const totalComments = posts.reduce((s,p) => s + p.comments, 0);
+  const totalShares = posts.reduce((s,p) => s + p.shares, 0);
+  const avgEng = posts.length ? (posts.reduce((s,p) => s + p.engagement, 0) / posts.length).toFixed(2) : 0;
+  const matched = posts.filter(p => p.notion).length;
+
+  const kpis = [
+    { label: 'Publicaciones', value: posts.length, sub: 'total del período' },
+    { label: 'Alcance Total', value: fmtNum(totalAlcance), sub: `${fmtNum(Math.round(totalAlcance/posts.length))} promedio` },
+    { label: 'Visualizaciones', value: fmtNum(totalViews), sub: `${fmtNum(Math.round(totalViews/posts.length))} promedio` },
+    { label: 'Likes', value: fmtNum(totalLikes), sub: '' },
+    { label: 'Guardados', value: fmtNum(totalSaves), sub: '' },
+    { label: 'Comentarios', value: fmtNum(totalComments), sub: '' },
+    { label: 'Compartidos', value: fmtNum(totalShares), sub: '' },
+    { label: 'Nuevos Seguidores', value: fmtNum(totalFollows), sub: 'desde publicaciones' },
+    { label: 'Eng. Promedio', value: avgEng + '%', sub: '(interacciones/alcance)' },
+  ];
+  document.getElementById('kpi-grid').innerHTML = kpis.map(k =>
+    `<div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      ${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}
+    </div>`
+  ).join('');
+
+  // 4. Charts
+  buildCharts(posts);
+
+  // 5. Top posts
+  document.getElementById('match-banner').innerHTML =
+    `<span>${matched} de ${posts.length}</span> publicaciones cruzadas con guiones de Notion. ` +
+    (matched < posts.length ? `${posts.length - matched} publicaciones sin guión asociado (puede haber diferencia de fechas).` : 'Cruce completo ✓');
+
+  const topPosts = [...posts].sort((a,b) => b.alcance - a.alcance).slice(0, 10);
+  document.getElementById('top-tbody').innerHTML = topPosts.map((p, i) => {
+    const rank = i < 3 ? `<span class="rank rank-${i+1}">${['🥇','🥈','🥉'][i]}</span>` : `<span class="rank">${i+1}</span>`;
+    const name = p.scriptName || truncate(p.descripcion, 45);
+    const link = p.link ? `<a href="${p.link}" target="_blank" class="link-icon">↗</a>` : '—';
+    return `<tr>
+      <td>${rank}</td>
+      <td title="${p.scriptName || p.descripcion}">${truncate(name, 45)}</td>
+      <td>${badgeTipo(p.tipo)}</td>
+      <td>${badgePilar(p.pilar)}</td>
+      <td style="color:var(--muted);font-size:0.8rem">${p.angulo || '—'}</td>
+      <td><strong>${fmtNum(p.alcance)}</strong></td>
+      <td>${fmtNum(p.views)}</td>
+      <td>${fmtNum(p.likes)}</td>
+      <td>${fmtNum(p.saves)}</td>
+      <td>${p.engagement}%</td>
+      <td>${link}</td>
+    </tr>`;
+  }).join('');
+
+  // 6. All posts
+  document.getElementById('all-tbody').innerHTML = posts.map(p => {
+    const name = p.scriptName || truncate(p.descripcion, 40);
+    const dateStr = p.pubDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+    const link = p.link ? `<a href="${p.link}" target="_blank" class="link-icon">↗</a>` : '—';
+    return `<tr>
+      <td style="color:var(--muted);font-size:0.8rem;white-space:nowrap">${dateStr}</td>
+      <td title="${p.scriptName || p.descripcion}">${truncate(name, 40)}</td>
+      <td>${badgeTipo(p.tipo)}</td>
+      <td>${badgePilar(p.pilar)}</td>
+      <td style="color:var(--muted);font-size:0.8rem">${p.angulo || '—'}</td>
+      <td>${fmtNum(p.alcance)}</td>
+      <td>${fmtNum(p.views)}</td>
+      <td>${fmtNum(p.likes)}</td>
+      <td>${fmtNum(p.saves)}</td>
+      <td>${p.engagement}%</td>
+      <td>${link}</td>
+    </tr>`;
+  }).join('');
+
+  // 7. Patterns
+  buildPatterns(posts);
+
+  // 8. Next steps
+  buildNextSteps(posts);
+}
+
+function buildCharts(posts) {
+  // Destroy previous
+  if (chartTipo) chartTipo.destroy();
+  if (chartPilar) chartPilar.destroy();
+
+  const colors = ['rgba(124,92,252,0.8)', 'rgba(249,115,22,0.8)', 'rgba(34,197,94,0.8)', 'rgba(96,165,250,0.8)'];
+
+  // Chart 1: alcance promedio por tipo
+  const tipoGroups = {};
+  posts.forEach(p => {
+    const t = p.tipo.includes('Reel') ? 'Reel' : (p.tipo.includes('Secuencia') ? 'Carrusel' : p.tipo || 'Otro');
+    if (!tipoGroups[t]) tipoGroups[t] = [];
+    tipoGroups[t].push(p.alcance);
+  });
+  const tipoLabels = Object.keys(tipoGroups);
+  const tipoData = tipoLabels.map(t => Math.round(tipoGroups[t].reduce((a,b)=>a+b,0)/tipoGroups[t].length));
+
+  chartTipo = new Chart(document.getElementById('chart-tipo'), {
+    type: 'bar',
+    data: {
+      labels: tipoLabels,
+      datasets: [{ data: tipoData, backgroundColor: colors, borderRadius: 8, borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2e2e2e' }, ticks: { color: '#888' } },
+        y: { grid: { color: '#2e2e2e' }, ticks: { color: '#888', callback: v => fmtNum(v) } }
+      }
+    }
+  });
+
+  // Chart 2: alcance por pilar
+  const pilarGroups = {};
+  posts.filter(p => p.pilar).forEach(p => {
+    if (!pilarGroups[p.pilar]) pilarGroups[p.pilar] = [];
+    pilarGroups[p.pilar].push(p.alcance);
+  });
+  const pilarLabels = Object.keys(pilarGroups);
+  const pilarData = pilarLabels.map(t => Math.round(pilarGroups[t].reduce((a,b)=>a+b,0)/pilarGroups[t].length));
+
+  if (pilarLabels.length > 0) {
+    chartPilar = new Chart(document.getElementById('chart-pilar'), {
+      type: 'doughnut',
+      data: {
+        labels: pilarLabels,
+        datasets: [{ data: pilarData, backgroundColor: colors, borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { color: '#888', font: { size: 11 }, boxWidth: 12 } }
+        }
+      }
+    });
+  } else {
+    document.getElementById('chart-pilar').parentElement.innerHTML = '<h4>Alcance por pilar de contenido</h4><p style="color:var(--muted);font-size:0.85rem;margin-top:40px;text-align:center">Sin datos de Notion para este período</p>';
+  }
+}
+
+function avgAlcance(arr) {
+  if (!arr.length) return 0;
+  return Math.round(arr.reduce((s,v)=>s+v,0)/arr.length);
+}
+
+function buildPatterns(posts) {
+  const haNotion = posts.some(p => p.notion);
+  let html = '';
+
+  // ── BLOQUE 1: TEMAS (Ángulo) ──
+  const anguloGroups = {};
+  posts.filter(p => p.angulo).forEach(p => {
+    if (!anguloGroups[p.angulo]) anguloGroups[p.angulo] = { posts: [], alcances: [] };
+    anguloGroups[p.angulo].posts.push(p);
+    anguloGroups[p.angulo].alcances.push(p.alcance);
+  });
+  const anguloSorted = Object.entries(anguloGroups).sort((a,b) => avgAlcance(b[1].alcances) - avgAlcance(a[1].alcances));
+
+  if (anguloSorted.length > 0) {
+    html += `<div class="pattern-block">
+      <div class="pattern-block-title">🧠 Temas que más funcionaron</div>
+      <div class="pattern-rows">`;
+    anguloSorted.forEach(([angulo, data], i) => {
+      const avg = avgAlcance(data.alcances);
+      const bar = Math.round((avg / avgAlcance(anguloSorted[0][1].alcances)) * 100);
+      const isBest = i === 0;
+      html += `<div class="pattern-row ${isBest ? 'pattern-row-best' : ''}">
+        <div class="pattern-row-label">
+          <span class="pattern-row-name">${angulo}</span>
+          <span class="pattern-row-count">${data.posts.length} post${data.posts.length>1?'s':''}</span>
+        </div>
+        <div class="pattern-bar-wrap">
+          <div class="pattern-bar" style="width:${bar}%;background:${isBest?'var(--accent)':'var(--border)'}"></div>
+        </div>
+        <span class="pattern-row-val">${fmtNum(avg)}</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── BLOQUE 2: ESTRUCTURAS (Formato + tipo de publicación) ──
+  const estructuraGroups = {};
+  posts.forEach(p => {
+    const fmt = p.formato || (p.tipo.includes('Reel') ? 'Reel' : 'Carrusel');
+    if (!estructuraGroups[fmt]) estructuraGroups[fmt] = { posts: [], alcances: [] };
+    estructuraGroups[fmt].posts.push(p);
+    estructuraGroups[fmt].alcances.push(p.alcance);
+  });
+  const estructuraSorted = Object.entries(estructuraGroups).sort((a,b) => avgAlcance(b[1].alcances) - avgAlcance(a[1].alcances));
+
+  if (estructuraSorted.length > 0) {
+    html += `<div class="pattern-block">
+      <div class="pattern-block-title">🏗️ Estructuras más efectivas</div>
+      <div class="pattern-rows">`;
+    estructuraSorted.forEach(([fmt, data], i) => {
+      const avg = avgAlcance(data.alcances);
+      const bar = Math.round((avg / avgAlcance(estructuraSorted[0][1].alcances)) * 100);
+      const isBest = i === 0;
+      html += `<div class="pattern-row ${isBest ? 'pattern-row-best' : ''}">
+        <div class="pattern-row-label">
+          <span class="pattern-row-name">${fmt}</span>
+          <span class="pattern-row-count">${data.posts.length} post${data.posts.length>1?'s':''}</span>
+        </div>
+        <div class="pattern-bar-wrap">
+          <div class="pattern-bar" style="width:${bar}%;background:${isBest?'var(--orange)':'var(--border)'}"></div>
+        </div>
+        <span class="pattern-row-val">${fmtNum(avg)}</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── BLOQUE 3: CTAs ──
+  const ctaGroups = {};
+  posts.filter(p => p.cta).forEach(p => {
+    if (!ctaGroups[p.cta]) ctaGroups[p.cta] = { posts: [], alcances: [], saves: [] };
+    ctaGroups[p.cta].posts.push(p);
+    ctaGroups[p.cta].alcances.push(p.alcance);
+    ctaGroups[p.cta].saves.push(p.saves);
+  });
+  // Also group posts without CTA
+  const noCta = posts.filter(p => !p.cta);
+  if (noCta.length) {
+    ctaGroups['Sin CTA'] = { posts: noCta, alcances: noCta.map(p=>p.alcance), saves: noCta.map(p=>p.saves) };
+  }
+  const ctaSorted = Object.entries(ctaGroups).sort((a,b) => avgAlcance(b[1].alcances) - avgAlcance(a[1].alcances));
+
+  if (ctaSorted.length > 1) {
+    html += `<div class="pattern-block">
+      <div class="pattern-block-title">📣 CTAs con mejor resultado</div>
+      <div class="pattern-rows">`;
+    ctaSorted.forEach(([cta, data], i) => {
+      const avg = avgAlcance(data.alcances);
+      const avgSave = Math.round(data.saves.reduce((s,v)=>s+v,0)/data.saves.length);
+      const bar = Math.round((avg / avgAlcance(ctaSorted[0][1].alcances)) * 100);
+      const isBest = i === 0 && cta !== 'Sin CTA';
+      html += `<div class="pattern-row ${isBest ? 'pattern-row-best' : ''}">
+        <div class="pattern-row-label">
+          <span class="pattern-row-name">${cta}</span>
+          <span class="pattern-row-count">${data.posts.length} post${data.posts.length>1?'s':''} · ${fmtNum(avgSave)} guardados prom.</span>
+        </div>
+        <div class="pattern-bar-wrap">
+          <div class="pattern-bar" style="width:${bar}%;background:${isBest?'var(--green)':'var(--border)'}"></div>
+        </div>
+        <span class="pattern-row-val">${fmtNum(avg)}</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  // ── BLOQUE 4: PILARES ──
+  const pilarGroups = {};
+  posts.filter(p => p.pilar).forEach(p => {
+    if (!pilarGroups[p.pilar]) pilarGroups[p.pilar] = { posts: [], alcances: [] };
+    pilarGroups[p.pilar].posts.push(p);
+    pilarGroups[p.pilar].alcances.push(p.alcance);
+  });
+  const pilarSorted = Object.entries(pilarGroups).sort((a,b) => avgAlcance(b[1].alcances) - avgAlcance(a[1].alcances));
+
+  if (pilarSorted.length > 0) {
+    html += `<div class="pattern-block">
+      <div class="pattern-block-title">🏆 Pilares por alcance promedio</div>
+      <div class="pattern-rows">`;
+    pilarSorted.forEach(([pilar, data], i) => {
+      const avg = avgAlcance(data.alcances);
+      const bar = Math.round((avg / avgAlcance(pilarSorted[0][1].alcances)) * 100);
+      const isBest = i === 0;
+      html += `<div class="pattern-row ${isBest ? 'pattern-row-best' : ''}">
+        <div class="pattern-row-label">
+          <span class="pattern-row-name">${pilar}</span>
+          <span class="pattern-row-count">${data.posts.length} post${data.posts.length>1?'s':''}</span>
+        </div>
+        <div class="pattern-bar-wrap">
+          <div class="pattern-bar" style="width:${bar}%;background:${isBest?'var(--accent2)':'var(--border)'}"></div>
+        </div>
+        <span class="pattern-row-val">${fmtNum(avg)}</span>
+      </div>`;
+    });
+    html += `</div></div>`;
+  }
+
+  if (!haNotion) {
+    html = `<div class="pattern-card"><div class="pattern-icon">⚠️</div><h4>Sin datos de Notion</h4><p>Cargá el CSV de guiones de Notion para ver el análisis de temas, estructuras y CTAs.</p></div>`;
+  }
+
+  document.getElementById('patterns-grid').innerHTML = html;
+}
+
+function buildNextSteps(posts) {
+  const steps = [];
+
+  // Best formato → do more
+  const tipoGroups = {};
+  posts.forEach(p => {
+    const t = p.tipo.includes('Reel') ? 'Reel' : 'Carrusel';
+    if (!tipoGroups[t]) tipoGroups[t] = [];
+    tipoGroups[t].push(p.alcance);
+  });
+  const sorted = Object.entries(tipoGroups).sort((a,b) => {
+    const avgA = a[1].reduce((s,v)=>s+v,0)/a[1].length;
+    const avgB = b[1].reduce((s,v)=>s+v,0)/b[1].length;
+    return avgB - avgA;
+  });
+  if (sorted[0]) {
+    const best = sorted[0][0];
+    const worst = sorted[sorted.length-1]?.[0];
+    steps.push({
+      title: `Incrementar producción de ${best}s`,
+      text: `Es el formato con mayor alcance promedio del período. Intentá llegar a ${best === 'Reel' ? '3-4 reels' : '3-4 carruseles'} por semana y reducir gradualmente ${worst ? worst + 's' : 'el otro formato'} si el rendimiento es inferior.`
+    });
+  }
+
+  // Replicate top post
+  const topPost = [...posts].sort((a,b) => b.alcance - a.alcance)[0];
+  if (topPost) {
+    const name = topPost.scriptName || 'el post de mayor alcance';
+    steps.push({
+      title: `Replicar el formato de "${truncate(name, 40)}"`,
+      text: `Con ${fmtNum(topPost.alcance)} de alcance, fue el contenido más distribuido. Analizá su gancho, estructura y CTA — y creá 2-3 variaciones del mismo concepto para el próximo mes.`
+    });
+  }
+
+  // Best pilar
+  const pilarGroups = {};
+  posts.filter(p => p.pilar).forEach(p => {
+    if (!pilarGroups[p.pilar]) pilarGroups[p.pilar] = [];
+    pilarGroups[p.pilar].push(p.alcance);
+  });
+  const bestPilar = Object.entries(pilarGroups).sort((a,b) => {
+    const avgA = a[1].reduce((s,v)=>s+v,0)/a[1].length;
+    const avgB = b[1].reduce((s,v)=>s+v,0)/b[1].length;
+    return avgB - avgA;
+  })[0];
+  if (bestPilar) {
+    steps.push({
+      title: `Concentrar guiones en pilar "${bestPilar[0]}"`,
+      text: `El pilar de ${bestPilar[0]} generó el mayor alcance promedio. Para el próximo mes, planificá al menos el 40-50% de los guiones dentro de este pilar.`
+    });
+  }
+
+  // Saves → lead magnet
+  const avgSaves = posts.reduce((s,p)=>s+p.saves,0)/posts.length;
+  if (avgSaves > 5) {
+    steps.push({
+      title: 'Convertir contenido guardado en lead magnets',
+      text: `El promedio de guardados por post es alto, lo que indica que la audiencia quiere guardar el contenido para volver. Considerá agregar CTAs a recursos descargables (PDFs, guías) en los posts más guardados.`
+    });
+  }
+
+  // Frequency suggestion
+  const timestamps = posts.map(p => p.pubDate?.getTime()).filter(Boolean);
+  const days = timestamps.length > 1
+    ? Math.max(1, Math.round((Math.max(...timestamps) - Math.min(...timestamps)) / (1000*60*60*24)))
+    : 7; // si todos los posts son del mismo día, asumir 1 semana de referencia
+  const freq = (posts.length / days * 7).toFixed(1);
+  const freqText = days <= 1
+    ? `${posts.length} posts este período`
+    : `~${freq} posts por semana`;
+  steps.push({
+    title: 'Mantener o aumentar la frecuencia de publicación',
+    text: `Publicaste a un ritmo de ${freqText}. La consistencia es clave para el algoritmo. Para el próximo mes, planificá el 100% del calendario con anticipación usando tu base de guiones en Notion.`
+  });
+
+  document.getElementById('steps-list').innerHTML = steps.map((s, i) =>
+    `<div class="step-item">
+      <div class="step-num">${i+1}</div>
+      <div>
+        <h4>${s.title}</h4>
+        <p>${s.text}</p>
+      </div>
+    </div>`
+  ).join('');
+}
+</script>
+</body>
+</html>
