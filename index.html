@@ -1378,11 +1378,32 @@ async function loadIAHistory() {
   window._iaHistory = data;
 }
 
-function showSavedAnalysis(id) {
-  const a = (window._iaHistory||[]).find(x => x.id === id);
-  if (!a) return;
-  document.getElementById('ia-results').scrollIntoView({ behavior: 'smooth' });
-  renderIAResults(a.result, a.total_scripts, a.crossed_count, [], [], a.result._dateFrom, a.result._dateTo, `(análisis del ${new Date(a.created_at).toLocaleDateString('es-AR')})`);
+async function showSavedAnalysis(id) {
+  // Intentar desde memoria primero, si no buscar en Supabase
+  let a = (window._iaHistory||[]).find(x => x.id === id);
+  if (!a) {
+    const { data } = await db.from('ia_analyses')
+      .select('id,period_label,total_scripts,crossed_count,created_at,result')
+      .eq('id', id).single();
+    if (!data) {
+      document.getElementById('ia-results').innerHTML = '<div class="err">No se encontró el análisis.</div>';
+      return;
+    }
+    a = data;
+  }
+  // Asegurarse de que el tab IA esté activo
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const tabBtn = document.querySelector('#tabs-bar .tab[onclick="switchTab(\'ia\')"]');
+  if (tabBtn) tabBtn.classList.add('active');
+  document.getElementById('tab-ia').classList.add('active');
+  // Mostrar resultado
+  const iaResults = document.getElementById('ia-results');
+  iaResults.innerHTML = '<div class="loading">Cargando análisis...</div>';
+  const result = typeof a.result === 'string' ? JSON.parse(a.result) : a.result;
+  renderIAResults(result, a.total_scripts, a.crossed_count, [], [], result?._dateFrom, result?._dateTo,
+    `(análisis del ${new Date(a.created_at).toLocaleDateString('es-AR')})`);
+  setTimeout(() => iaResults.scrollIntoView({ behavior: 'smooth' }), 100);
 }
 
 async function getNotionScripts(dbId) {
@@ -1600,70 +1621,65 @@ TOP 3 POSTS MÁS LIKEADOS: ${top3}`;
   }
 
   const periodoLabel = (dateFrom && dateTo) ? `del ${dateFrom} al ${dateTo}` : 'sin filtro de período';
-  const prompt = `Sos estratega de contenido para la agencia ItsCrear. Analizá en profundidad los guiones del cliente "${client.name}" (período: ${periodoLabel}).
+  const prompt = `Sos estratega de contenido para la agencia ItsCrear. Tenés que analizar los guiones REALES del cliente "${client.name}" que te paso abajo (período: ${periodoLabel}).
 
-Tu foco principal es el CONTENIDO DE LOS GUIONES: qué estructuras usan, cómo abren (hooks), qué CTA tienen, de qué temas hablan y cómo está desarrollado el cuerpo. Secundariamente, cruzá eso con las métricas reales para identificar qué funciona.
+REGLA PRINCIPAL: Solo analizá lo que ves en los guiones. No inventes ni generalices. Si un guión tiene body completo, leelo entero. Si no tiene, usá el hook y el título. Citá frases literales de los guiones cuando des ejemplos.
 
-DISTRIBUCIÓN DE PILARES/TEMAS (${scripts.length} guiones totales):
-${pilarResumen}
+PILARES presentes (${scripts.length} guiones): ${pilarResumen}
 
-═══ GUIONES COMPLETOS (${scripts.length} total) ═══
+════════════════════════════════
+GUIONES DEL PERÍODO (leé cada uno):
+════════════════════════════════
 ${scriptsSummary}
 
-═══ GUIONES CON MÉTRICAS REALES (${crossed.length} cruzados con Meta) ═══
-${crossedSummary}
+${crossed.length ? `════════════════════════════════
+ESTOS GUIONES TIENEN MÉTRICAS REALES (los más importantes para el análisis):
+════════════════════════════════
+${crossedSummary}` : ''}
 
 ${metaSummary}
 
-CRITERIOS PARA ANALIZAR:
-HOOKS: ¿Arranca con pregunta, con dato, con afirmación polémica, con historia, con problema? ¿Cuáles generaron más engagement?
-ESTRUCTURAS: ¿Es tutorial paso a paso, lista, storytelling, antes/después, problema-solución, mito vs realidad? ¿Cuál funciona mejor?
-CTAS: ¿Pide guardar, comentar, compartir, seguir? ¿Cuál genera más respuesta?
-TEMAS: ¿Qué pilares o tópicos generan más guardados (interés genuino) vs más comentarios (conversación) vs más seguimientos (audiencia nueva)?
-BODY/DESARROLLO: ¿El cuerpo es específico con datos/ejemplos o genérico? ¿Largo o corto?
+════════════════════════════════
+LO QUE NECESITO QUE HAGAS:
+════════════════════════════════
+1. Leé cada guión. Identificá su estructura real (¿cómo abre? ¿cómo desarrolla? ¿cómo cierra?).
+2. Agrupá los que se parecen. ¿Hay guiones que usan la misma fórmula? ¿Cuál funciona mejor?
+3. Mirá los hooks: ¿arrancan con pregunta, dato, afirmación polémica, historia, error común?
+4. Mirá los CTAs: ¿piden guardar, comentar, seguir? ¿Cuándo aparecen en el guión?
+5. Si hay métricas cruzadas, identificá qué estructura/tema/hook tuvo más guardados (valor real) y más comentarios (conversación).
+6. Decime exactamente qué replicar el próximo mes y qué probar por primera vez.
 
-INSTRUCCIONES:
-- Analizá con los guiones reales que tenés — cita títulos y hooks específicos, no generalices.
-- Si hay métricas cruzadas, úsalas para validar qué estructuras/temas funcionan.
-- En "Próximos guiones" escribí el hook literal completo como arrancaría el video/post.
-- Sé directo y específico. No digas "crear contenido de valor" — decí exactamente qué estructura, qué tema, qué hook.
+NO quiero: frases genéricas como "crear contenido de valor" o "conectar con la audiencia". Quiero observaciones específicas de estos guiones.
 
-Respondé EXACTAMENTE con este formato (texto plano, sin JSON):
+Respondé EXACTAMENTE con este formato (texto plano, sin JSON, sin secciones extra):
 
 ##RESUMEN##
-3-4 oraciones: qué patrones dominan en los guiones, qué temas tienen más presencia, qué funciona según métricas.
+2-3 oraciones concretas: qué tipo de guiones predominan, qué estructura/tema se repite más, qué señal dan las métricas.
 
 ##PATRONES_GANADORES##
-- PATRON: nombre del patrón | DESCRIPCION: por qué funciona, con ejemplos concretos de los guiones | EJEMPLO: cita el título o el hook real
-- PATRON: nombre del patrón | DESCRIPCION: por qué funciona, con ejemplos concretos de los guiones | EJEMPLO: cita el título o el hook real
-- PATRON: nombre del patrón | DESCRIPCION: por qué funciona, con ejemplos concretos de los guiones | EJEMPLO: cita el título o el hook real
+- PATRON: nombre específico | DESCRIPCION: cómo funciona esta fórmula en los guiones de este cliente, con frases literales | EJEMPLO: cita el título o una frase real del guión
+- PATRON: nombre específico | DESCRIPCION: cómo funciona esta fórmula en los guiones de este cliente, con frases literales | EJEMPLO: cita el título o una frase real del guión
+- PATRON: nombre específico | DESCRIPCION: cómo funciona esta fórmula en los guiones de este cliente, con frases literales | EJEMPLO: cita el título o una frase real del guión
 
 ##PATRONES_DEBILES##
-- PATRON: nombre del patrón débil | DESCRIPCION: por qué no funciona o por qué evitarlo | EJEMPLO: cita el título o el hook real
-- PATRON: nombre del patrón débil | DESCRIPCION: por qué no funciona o por qué evitarlo | EJEMPLO: cita el título o el hook real
+- PATRON: nombre específico | DESCRIPCION: qué no está funcionando y por qué, con ejemplo real | EJEMPLO: cita el título o una frase real
+- PATRON: nombre específico | DESCRIPCION: qué no está funcionando y por qué, con ejemplo real | EJEMPLO: cita el título o una frase real
 
 ##GANCHOS##
-MEJOR: describí el estilo de hook que mejor funcionó con ejemplos literales de los guiones
-PEOR: describí el estilo de hook más débil con ejemplos
-RECOMENDACION: escribí un hook de ejemplo listo para usar en el próximo guión
+MEJOR: qué estilo de hook predomina en los guiones con mejores métricas — citá un hook literal
+PEOR: qué estilo de hook está dando menos resultado — citá un ejemplo literal
+RECOMENDACION: escribí un hook completo y listo para grabar, basado en lo que funcionó
 
 ##CTAS##
-PATRON: qué CTAs aparecen y cuáles correlacionan con más guardados o comentarios
-RECOMENDACION: CTA específico recomendado y en qué momento del guión ponerlo
-
-##RECOMENDACIONES##
-- Recomendación 1: estructura o formato concreto a replicar o evitar
-- Recomendación 2: tema o pilar a profundizar
-- Recomendación 3: ajuste de hook basado en lo que funcionó
-- Recomendación 4: mejora de CTA o cuerpo del guión
-- Recomendación 5: idea de serie o formato recurrente que tiene potencial
+PATRON: qué CTAs se usan y en qué momento del guión aparecen
+RECOMENDACION: el CTA exacto que recomendarías para el próximo mes y dónde ponerlo
 
 ##PROXIMOS_GUIONES##
-- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
-- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
-- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
-- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guración, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
-- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos`;
+- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
+- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
+- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
+- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
+- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica`;
 
   // Llamar a Claude via Edge Function
   const res = await fetch(EDGE_FN, {
@@ -1708,7 +1724,7 @@ RECOMENDACION: CTA específico recomendado y en qué momento del guión ponerlo
   const debiles = extractSection(txt, 'PATRONES_DEBILES');
   const ganchos = extractSection(txt, 'GANCHOS');
   const ctas = extractSection(txt, 'CTAS');
-  const recomendaciones = extractSection(txt, 'RECOMENDACIONES');
+  const recomendaciones = extractSection(txt, 'RECOMENDACIONES') || ''; // puede no venir
   const proximos = extractSection(txt, 'PROXIMOS_GUIONES');
 
   function parsePatrones(block) {
