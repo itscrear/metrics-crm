@@ -574,6 +574,8 @@ function delPeriod(id, label) {
   document.getElementById('confirm-btn').onclick = async () => {
     await db.from('posts').delete().eq('period_id', id);
     await db.from('metric_periods').delete().eq('id', id);
+    // Si el período eliminado era el seleccionado en Publicaciones, resetear
+    if (selPeriod === id) selPeriod = null;
     closeModal('modal-confirm');
     await loadPeriods(); renderHistorial();
   };
@@ -607,14 +609,14 @@ async function loadPubs(pid) {
   const wrap = document.getElementById('pubs-wrap');
   if (!posts?.length) { wrap.innerHTML = '<div class="empty"><h3>Sin publicaciones en este período</h3></div>'; return; }
   wrap.innerHTML = `<div class="tbl-wrap"><table>
-    <thead><tr><th>⭐</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Visualiz.</th><th>Coment.</th><th>Compartid.</th><th>Link</th></tr></thead>
+    <thead><tr><th>⭐</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Visualiz.</th><th>Coment.</th><th>Compartid.</th><th>Seguim.</th><th>Link</th></tr></thead>
     <tbody>${posts.map(p=>`<tr>
       <td><button class="star-btn" onclick="star('${p.id}',${p.is_star},this)">${p.is_star?'⭐':'☆'}</button></td>
       <td>${p.pub_date||'—'}</td>
       <td>${(p.description||'—').slice(0,45)}${p.description?.length>45?'…':''}</td>
       <td>${p.post_type||'—'}</td>
       <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
-      <td>${N(p.views)}</td><td>${N(p.comments)}</td><td>${N(p.shares)}</td>
+      <td>${N(p.views)}</td><td>${N(p.comments)}</td><td>${N(p.shares)}</td><td>${N(p.follows)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
   </table></div>`;
@@ -649,6 +651,8 @@ async function renderEstrellas() {
 // CARGAR MÉTRICAS (CSV Meta Business Suite)
 // ═══════════════════════════════════════════
 function renderCargar() {
+  // Preservar el nombre del período si el usuario ya lo había escrito
+  const savedLabel = document.getElementById('p-label')?.value || '';
   document.getElementById('c-cargar').innerHTML = `
     <div class="card">
       <h3>📂 Cargar CSV de Meta Business Suite</h3>
@@ -658,7 +662,7 @@ function renderCargar() {
       </p>
       <div class="fg">
         <label>Nombre del período *</label>
-        <input type="text" id="p-label" placeholder="Ej: Marzo 2026 o 01-15 Mar 2026">
+        <input type="text" id="p-label" placeholder="Ej: Marzo 2026 o 01-15 Mar 2026" value="${savedLabel}">
       </div>
       <div class="upload-zone" onclick="document.getElementById('csv-input').click()">
         <div class="icon">📊</div>
@@ -896,6 +900,9 @@ async function saveCSV() {
   // 3. Éxito
   console.log('[saveCSV] ✅ Todo guardado correctamente.');
   csvData = null;
+  // Resetear el input para que el mismo archivo pueda volver a subirse si hace falta
+  const csvInput = document.getElementById('csv-input');
+  if (csvInput) csvInput.value = '';
   await loadPeriods();
   btn.disabled = false; btn.innerHTML = '💾 Guardar período y publicaciones';
   document.getElementById('csv-preview').innerHTML = `<div style="background:#D1FAE5;color:#065F46;padding:14px;border-radius:8px;font-weight:600;">✅ Período "${label}" guardado con ${toInsert.length} publicaciones.</div>`;
@@ -910,15 +917,28 @@ async function checkAlerts() {
   const months = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const pending = [], upcoming = [];
 
+  // Una sola query para traer todos los períodos de todos los clientes activos
+  const activeIds = clients.filter(c => c.active && c.start_date && new Date(c.start_date) <= now).map(c => c.id);
+  if (!activeIds.length) { document.getElementById('alerts-box').innerHTML = ''; return; }
+  const { data: allPeriods } = await db.from('metric_periods').select('client_id,period_label').in('client_id', activeIds);
+
+  // Agrupar labels por client_id
+  const labelsByClient = {};
+  (allPeriods||[]).forEach(p => {
+    if (!labelsByClient[p.client_id]) labelsByClient[p.client_id] = [];
+    labelsByClient[p.client_id].push(p.period_label.toLowerCase());
+  });
+
+  const cm = months[now.getMonth()], cy = now.getFullYear();
+  const day = now.getDate();
+  // Días reales del mes actual (funciona para todos los meses, incluso febrero)
+  const daysInMonth = new Date(cy, now.getMonth() + 1, 0).getDate();
+
   for (const c of clients) {
     if (!c.active || !c.start_date || new Date(c.start_date) > now) continue;
-    const { data: pp } = await db.from('metric_periods').select('period_label').eq('client_id', c.id);
-    const labels = (pp||[]).map(p => p.period_label.toLowerCase());
-    const cm = months[now.getMonth()], cy = now.getFullYear();
-    const day = now.getDate();
+    const labels = labelsByClient[c.id] || [];
 
     if (c.pieces_per_month === 30) {
-      // Quincenales: avisar el día 13 (próximos 2 días) y desde el 15 (vencido)
       const falta1 = !labels.some(l => (l.includes('1-15')||l.includes('primera')) && l.includes(cm) && l.includes(String(cy)));
       const falta2 = !labels.some(l => (l.includes('16')||l.includes('segunda')) && l.includes(cm) && l.includes(String(cy)));
       if (falta1) {
@@ -930,14 +950,13 @@ async function checkAlerts() {
         else if (day >= 26) upcoming.push({ name: c.name, msg: `2ª quincena de ${cm} ${cy} — vence en ${28-day} días`, urgente: false });
       }
     } else {
-      // Mensuales: el mes anterior debería estar cargado a partir del día 3
       const pm = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
       const py = now.getMonth() === 0 ? now.getFullYear()-1 : now.getFullYear();
       const faltaMes = !labels.some(l => l.includes(months[pm]) && l.includes(String(py)));
       if (faltaMes && day >= 3) pending.push({ name: c.name, msg: `${months[pm]} ${py}`, urgente: day >= 10 });
-      // Avisar próximo cierre: desde el día 28
       const faltaActual = !labels.some(l => l.includes(cm) && l.includes(String(cy)));
-      if (faltaActual && day >= 28) upcoming.push({ name: c.name, msg: `${cm} ${cy} — cierra en ${31-day} días`, urgente: false });
+      // Usar daysInMonth para calcular correctamente los días restantes
+      if (faltaActual && day >= daysInMonth - 3) upcoming.push({ name: c.name, msg: `${cm} ${cy} — cierra en ${daysInMonth - day} días`, urgente: false });
     }
   }
 
@@ -983,6 +1002,10 @@ async function renderIA() {
   const lastDay  = new Date(now.getFullYear(), now.getMonth(), 0);
   const fmt = d => d.toISOString().split('T')[0];
 
+  // Preservar fechas que el usuario haya ingresado previamente
+  const savedFrom = document.getElementById('ia-from')?.value || fmt(firstDay);
+  const savedTo   = document.getElementById('ia-to')?.value   || fmt(lastDay);
+
   el.innerHTML = `
     <div style="padding:24px">
       <div class="ai-center" style="margin-bottom:0">
@@ -993,11 +1016,11 @@ async function renderIA() {
       <div style="background:white;border:1px solid var(--gray-200);border-radius:12px;padding:20px;margin:20px 0;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
         <div class="fg" style="margin:0;flex:1;min-width:140px">
           <label>Desde</label>
-          <input type="date" id="ia-from" value="${fmt(firstDay)}">
+          <input type="date" id="ia-from" value="${savedFrom}">
         </div>
         <div class="fg" style="margin:0;flex:1;min-width:140px">
           <label>Hasta</label>
-          <input type="date" id="ia-to" value="${fmt(lastDay)}">
+          <input type="date" id="ia-to" value="${savedTo}">
         </div>
         <button class="btn btn-p" id="btn-ia-run" onclick="runIA()">🚀 Analizar con IA</button>
       </div>
@@ -1192,14 +1215,19 @@ function normalizeDate(raw) {
   const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`;
 
-  // DD/MM/YYYY o DD-MM-YYYY
+  // DD/MM/YYYY, MM/DD/YYYY o DD-MM-YYYY
+  // Lógica: si el segundo número > 12, sólo puede ser MM/DD/YYYY (el mes no puede ser > 12)
+  // En cualquier otro caso, asumir DD/MM/YYYY (formato argentino por defecto)
   const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (dmy) return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
-
-  // MM/DD/YYYY (formato americano — si el primer número > 12 es día)
-  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-  if (mdy && parseInt(mdy[1]) <= 12 && parseInt(mdy[2]) > 12)
-    return `${mdy[3]}-${mdy[1].padStart(2,'0')}-${mdy[2].padStart(2,'0')}`;
+  if (dmy) {
+    const second = parseInt(dmy[2]);
+    if (second > 12) {
+      // Es MM/DD/YYYY: primer nro = mes, segundo = día
+      return `${dmy[3]}-${dmy[1].padStart(2,'0')}-${dmy[2].padStart(2,'0')}`;
+    }
+    // DD/MM/YYYY (argentino) o ambiguo → asumir DD/MM
+    return `${dmy[3]}-${dmy[2].padStart(2,'0')}-${dmy[1].padStart(2,'0')}`;
+  }
 
   // "April 7, 2026" o "7 de abril de 2026" — usar Date.parse
   const months = { january:1,february:2,march:3,april:4,may:5,june:6,july:7,august:8,september:9,october:10,november:11,december:12,
@@ -1233,16 +1261,31 @@ function parseScripts(pages) {
       if (p.type==='status') return p.status?.name||null;
       return null;
     };
-    // Buscar fecha en CUALQUIER columna de tipo date primero
     let uploadDate = null;
     const colNames = Object.keys(pp);
-    for (const k of colNames) {
-      if (pp[k].type === 'date' && pp[k].date?.start) {
-        uploadDate = normalizeDate(pp[k].date.start);
+
+    // 1. Buscar por nombre exacto en columnas de tipo date (orden de prioridad)
+    const datePriorityKeys = [
+      'Fecha publicación','Fecha publicacion','Fecha de publicación','Fecha de publicacion',
+      'Fecha subido','Fecha subida','Fecha publicado',
+      'Fecha','Date','Publicado','Publicación','Publicacion'
+    ];
+    for (const key of datePriorityKeys) {
+      if (pp[key]?.type === 'date' && pp[key].date?.start) {
+        uploadDate = normalizeDate(pp[key].date.start);
         break;
       }
     }
-    // Si no encontró por tipo date, buscar en texto usando normalizeDate
+    // 2. Si no encontró por nombre, tomar la primera columna de tipo date
+    if (!uploadDate) {
+      for (const k of colNames) {
+        if (pp[k].type === 'date' && pp[k].date?.start) {
+          uploadDate = normalizeDate(pp[k].date.start);
+          break;
+        }
+      }
+    }
+    // 3. Fallback: buscar en columnas de texto que parezcan fechas
     if (!uploadDate) {
       for (const k of colNames) {
         const v = g(pp[k]);
@@ -1422,7 +1465,9 @@ RECOMENDACION: qué mejorar
     analisis_ganchos: parseGanchos(ganchos),
     analisis_ctas: parseCtas(ctas),
     recomendaciones: recomendaciones.split('\n').filter(l => l.trim().startsWith('-')).map(l => l.replace(/^-\s*/,'')).filter(Boolean),
-    proximos_guiones: parseProximos(proximos)
+    proximos_guiones: parseProximos(proximos),
+    _dateFrom: dateFrom || null,
+    _dateTo:   dateTo   || null
   };
 }
 
