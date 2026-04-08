@@ -912,7 +912,10 @@ function processCSV(rows) {
 
   // Detectar columnas — normaliza acentos para evitar problemas de encoding del CSV
   const norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  const findCol = (keywords) => cols.find(c => keywords.some(k => norm(c).includes(norm(k))));
+  // Primero intenta match exacto, luego parcial (evita que "Comentarios" matchee "Comentarios sobre la publicación")
+  const findColExact   = (kws) => cols.find(c => kws.some(k => norm(c) === norm(k)));
+  const findColPartial = (kws) => cols.find(c => kws.some(k => norm(c).includes(norm(k))));
+  const findCol = (kws) => findColExact(kws) || findColPartial(kws);
 
   const COL_ID     = findCol(['Identificador','identificador']);
   const COL_LINK   = findCol(['Enlace','enlace','permanente','Permalink','permalink']);
@@ -925,7 +928,9 @@ function processCSV(rows) {
   const COL_LIKES  = findCol(['gusta','Me gusta']);
   const COL_SHARES = findCol(['compartió','compartio','Compartid']);
   const COL_FOLLOW = findCol(['Seguimiento','seguimiento']);
-  const COL_COMM   = findCol(['Comentarios','comentarios','Comentario','comentario','Comments','comments','comment']);
+  // Para Comentarios: match exacto primero para no confundir con "Comentarios sobre la publicación"
+  const COL_COMM   = findColExact(['Comentarios','comentarios','Comments','comments'])
+                  || cols.find(c => (norm(c).includes('comentario') || norm(c).includes('comment')) && !norm(c).includes('sobre') && !norm(c).includes('publicaci'));
   const COL_SAVES  = findCol(['guard','Guard']);
 
   console.log('[processCSV] Columnas CSV:', cols);
@@ -1221,10 +1226,66 @@ async function runIA() {
         })
       : allScripts;
 
-    iaProgress(40, `${scripts.length} guiones en el período. Cruzando con métricas...`);
+    iaProgress(30, `${scripts.length} guiones encontrados. Cargando contenido de páginas...`);
+
+    // Traer el contenido interno de cada página de Notion (guión, referencia, copy)
+    const scriptsToFetch = scripts.slice(0, 40); // máx 40 para no tardar demasiado
+    const pageIds = scriptsToFetch.map(s => s.pageId).filter(Boolean);
+    if (pageIds.length) {
+      try {
+        const blocksRes = await fetch(EDGE_FN, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
+          body: JSON.stringify({ action: 'notion_blocks', pageIds })
+        });
+        if (blocksRes.ok) {
+          const blocksData = await blocksRes.json();
+          const { contents, ok, failed, firstError } = blocksData;
+
+          if (contents) {
+            scriptsToFetch.forEach(s => {
+              if (s.pageId && contents[s.pageId]) {
+                const blockText = contents[s.pageId].trim();
+                if (blockText) {
+                  s.body = s.body
+                    ? `${s.body}\n${blockText}`.slice(0, 700)
+                    : blockText.slice(0, 700);
+                }
+              }
+            });
+          }
+
+          // Mostrar diagnóstico visible en pantalla
+          const withContent = scriptsToFetch.filter(s => s.body).length;
+          let diagMsg = '';
+          if (failed > 0 && firstError) {
+            diagMsg = `<div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400E">
+              ⚠️ <strong>Contenido de páginas:</strong> ${ok} páginas leídas correctamente, ${failed} con error.<br>
+              Error: <code>${firstError}</code><br>
+              ${firstError?.includes('403') ? '<strong>Solución:</strong> En tu integración de Notion (notion.so/my-integrations) verificá que tenga habilitado "Read content".' : ''}
+            </div>`;
+          } else if (withContent === 0) {
+            diagMsg = `<div style="background:#F3F4F6;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#6B7280">
+              ℹ️ Las páginas de Notion no tienen contenido interno o están vacías. El análisis usará las propiedades (hook, CTA, etc.).
+            </div>`;
+          } else {
+            diagMsg = `<div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#065F46">
+              ✅ <strong>Contenido cargado:</strong> ${withContent} guiones con cuerpo completo (guión, referencia, copy).
+            </div>`;
+          }
+          // Mostrar sólo si ya hay algo en ia-results, o agregar al principio
+          const iaRes = document.getElementById('ia-results');
+          iaRes.innerHTML = diagMsg + iaRes.innerHTML;
+        }
+      } catch(e) {
+        console.warn('[IA] No se pudo cargar contenido de bloques:', e);
+      }
+    }
+
+    iaProgress(50, 'Cruzando guiones con métricas de Meta...');
 
     // Traer posts del período
-    let postsQuery = db.from('posts').select('pub_date,likes,saves,reach,shares,comments,views').eq('client_id', client.id);
+    let postsQuery = db.from('posts').select('pub_date,likes,saves,reach,shares,comments,views,follows,post_type,description').eq('client_id', client.id);
     if (dateFrom) postsQuery = postsQuery.gte('pub_date', dateFrom);
     if (dateTo)   postsQuery = postsQuery.lte('pub_date', dateTo);
     const { data: allPosts } = await postsQuery;
@@ -1254,7 +1315,7 @@ async function runIA() {
     const statusMsg = crossed.length
       ? `${crossed.length} piezas cruzadas. Enviando a Claude...`
       : `0 cruces (Notion: ${notionDates.length} fechas | Meta: ${metaDates.length} fechas). Analizando igual...`;
-    iaProgress(65, statusMsg);
+    iaProgress(70, statusMsg);
 
     const analysis = await callClaude(scripts, crossed, allPosts||[], dateFrom, dateTo);
     iaProgress(90, 'Guardando análisis...');
@@ -1305,7 +1366,7 @@ async function loadIAHistory() {
     <div style="display:flex;flex-direction:column;gap:8px">
       ${data.map(a => `
         <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center"
-             onclick="showSavedAnalysis(${JSON.stringify(a.id)})">
+             onclick="showSavedAnalysis('${a.id}')">
           <div>
             <div style="font-weight:600;font-size:14px">${a.period_label}</div>
             <div style="font-size:12px;color:var(--gray-500)">${a.total_scripts} guiones · ${a.crossed_count} cruzados · ${new Date(a.created_at).toLocaleDateString('es-AR')}</div>
@@ -1449,82 +1510,160 @@ function parseScripts(pages) {
       }
     }
     const tk = colNames.find(k => pp[k].type==='title');
+    const pageId = page.id; // necesario para traer bloques después
+
+    // Buscar el body/guión en propiedades (fallback — si no hay, lo traemos de bloques)
+    const bodyKeys = ['Guión','Guion','Body','Script','Contenido','Texto','Descripción','Descripcion','Caption','Copy','Libreto','Desarrollo','Cuerpo'];
+    let body = null;
+    for (const bk of bodyKeys) {
+      const val = g(pp[bk]);
+      if (val && val.length > 20) { body = val; break; }
+    }
+    // Si no encontró por nombre exacto, buscar el rich_text más largo que no sea hook ni CTA
+    if (!body) {
+      const hookVal = g(pp['Hook']||pp['Gancho']||pp['Intro']);
+      const ctaVal  = g(pp['CTA']||pp['Call to action']||pp['Llamada']);
+      const candidates = colNames
+        .filter(k => pp[k].type === 'rich_text')
+        .map(k => ({ k, v: g(pp[k]) }))
+        .filter(({v}) => v && v.length > 30 && v !== hookVal && v !== ctaVal)
+        .sort((a,b) => (b.v?.length||0) - (a.v?.length||0));
+      if (candidates.length) body = candidates[0].v;
+    }
+
     return {
       title:      g(pp[tk]) || 'Sin título',
-      tema:       g(pp['Tema']||pp['Ángulo']||pp['Angulo']||pp['Pilar']||pp['Nicho']),
+      tema:       g(pp['Tema']||pp['Ángulo']||pp['Angulo']||pp['Nicho']),
       estructura: g(pp['Estructura']||pp['Formato']||pp['Tipo']||pp['Estilo']),
       cta:        g(pp['CTA']||pp['Call to action']||pp['Llamada']),
       hook:       g(pp['Hook']||pp['Gancho']||pp['Intro']),
       pilar:      g(pp['Pilar']||pp['Categoría']||pp['Categoria']||pp['Pilares']),
+      body:       body ? body.slice(0, 500) : null,
       upload_date: uploadDate,
+      pageId,
       _cols:      colNames.join(', '),
     };
   });
 }
 
 async function callClaude(scripts, crossed, allPosts, dateFrom, dateTo) {
-  const scriptsSummary = scripts.slice(0,60).map(s =>
-    `- "${s.title}" | Tema: ${s.tema||'?'} | Formato: ${s.estructura||'?'} | Hook: ${s.hook||'?'} | CTA: ${s.cta||'?'} | Fecha: ${s.upload_date||'sin fecha'}`
-  ).join('\n');
+  // Agrupar por pilar/tema para mostrar patrones
+  const pilarCount = {};
+  scripts.forEach(s => { const p = s.pilar || s.tema || 'Sin categoría'; pilarCount[p] = (pilarCount[p]||0)+1; });
+  const pilarResumen = Object.entries(pilarCount).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`${p}: ${n}`).join(' | ');
+
+  const scriptsSummary = scripts.slice(0,60).map(s => {
+    const lines = [
+      `TÍTULO: "${s.title}"`,
+      s.pilar      ? `  Pilar: ${s.pilar}`        : null,
+      s.tema       ? `  Tema: ${s.tema}`           : null,
+      s.estructura ? `  Estructura: ${s.estructura}` : null,
+      s.hook       ? `  Hook: ${s.hook}`           : null,
+      s.cta        ? `  CTA: ${s.cta}`             : null,
+      s.body       ? `  Body: ${s.body}`           : null,
+      s.upload_date ? `  Fecha: ${s.upload_date}`  : null,
+    ].filter(Boolean);
+    return lines.join('\n');
+  }).join('\n\n');
+
+  const engRate = (p) => p.reach ? (((p.likes||0)+(p.saves||0)+(p.comments||0))/p.reach*100).toFixed(1)+'%' : '?';
 
   const crossedSummary = crossed.length
-    ? crossed.slice(0,40).map(s =>
-        `- "${s.title}" → Likes:${s.metrics.likes||0} Guardados:${s.metrics.saves||0} Alcance:${s.metrics.reach||0} Compartidos:${s.metrics.shares||0} | Tema:${s.tema||'?'} | Formato:${s.estructura||'?'} | Hook:${s.hook||'?'}`
-      ).join('\n')
+    ? crossed.slice(0,40).map(s => {
+        const m = s.metrics;
+        return `- "${s.title}" | Tipo:${fmtTipo(m.post_type)||'?'} | Likes:${m.likes||0} Guardados:${m.saves||0} Alcance:${m.reach||0} Views:${m.views||0} Comentarios:${m.comments||0} Seguimientos:${m.follows||0} EngRate:${engRate(m)} | Tema:${s.tema||'?'} | Formato:${s.estructura||'?'} | Hook:${s.hook||'?'} | CTA:${s.cta||'?'}`;
+      }).join('\n')
     : 'No hay cruces exactos por fecha aún.';
 
-  // Resumen de métricas generales aunque no haya cruce
-  const metaSummary = allPosts.length
-    ? `MÉTRICAS GENERALES (${allPosts.length} publicaciones en Meta):\n` +
-      `- Promedio likes: ${Math.round(allPosts.reduce((a,p)=>a+(p.likes||0),0)/allPosts.length)}\n` +
-      `- Promedio guardados: ${Math.round(allPosts.reduce((a,p)=>a+(p.saves||0),0)/allPosts.length)}\n` +
-      `- Promedio alcance: ${Math.round(allPosts.reduce((a,p)=>a+(p.reach||0),0)/allPosts.length)}`
-    : '';
+  // Resumen de métricas generales con breakdown por tipo
+  let metaSummary = '';
+  if (allPosts.length) {
+    const avg = (arr, key) => arr.length ? Math.round(arr.reduce((a,p)=>a+(p[key]||0),0)/arr.length) : 0;
+    const byType = {};
+    allPosts.forEach(p => {
+      const t = fmtTipo(p.post_type) || 'Desconocido';
+      if (!byType[t]) byType[t] = [];
+      byType[t].push(p);
+    });
+    const typeBreakdown = Object.entries(byType).map(([t, ps]) =>
+      `  · ${t} (${ps.length} posts): avg likes ${avg(ps,'likes')} | avg guardados ${avg(ps,'saves')} | avg alcance ${avg(ps,'reach')} | avg comentarios ${avg(ps,'comments')}`
+    ).join('\n');
+
+    const sorted = [...allPosts].sort((a,b)=>(b.likes||0)-(a.likes||0));
+    const top3 = sorted.slice(0,3).map(p=>`"${(p.description||'Sin desc').slice(0,50)}" (${fmtTipo(p.post_type)||'?'}, ${p.likes||0} likes, ${p.saves||0} guardados)`).join('; ');
+
+    metaSummary = `MÉTRICAS GENERALES (${allPosts.length} publicaciones en Meta):
+- Promedio likes: ${avg(allPosts,'likes')} | Promedio guardados: ${avg(allPosts,'saves')} | Promedio alcance: ${avg(allPosts,'reach')} | Promedio comentarios: ${avg(allPosts,'comments')} | Promedio seguimientos: ${avg(allPosts,'follows')}
+BREAKDOWN POR TIPO DE CONTENIDO:
+${typeBreakdown}
+TOP 3 POSTS MÁS LIKEADOS: ${top3}`;
+  }
 
   const periodoLabel = (dateFrom && dateTo) ? `del ${dateFrom} al ${dateTo}` : 'sin filtro de período';
-  const prompt = `Sos analista experto en contenido de redes sociales para la agencia ItsCrear. Analizá los guiones y métricas del cliente "${client.name}" (período: ${periodoLabel}).
+  const prompt = `Sos estratega de contenido para la agencia ItsCrear. Analizá en profundidad los guiones del cliente "${client.name}" (período: ${periodoLabel}).
 
-GUIONES DE NOTION (${scripts.length} total):
+Tu foco principal es el CONTENIDO DE LOS GUIONES: qué estructuras usan, cómo abren (hooks), qué CTA tienen, de qué temas hablan y cómo está desarrollado el cuerpo. Secundariamente, cruzá eso con las métricas reales para identificar qué funciona.
+
+DISTRIBUCIÓN DE PILARES/TEMAS (${scripts.length} guiones totales):
+${pilarResumen}
+
+═══ GUIONES COMPLETOS (${scripts.length} total) ═══
 ${scriptsSummary}
 
-GUIONES CRUZADOS CON MÉTRICAS (${crossed.length} piezas):
+═══ GUIONES CON MÉTRICAS REALES (${crossed.length} cruzados con Meta) ═══
 ${crossedSummary}
 
 ${metaSummary}
 
-IMPORTANTE: Si hay pocos o ningún cruce, igual analizá los patrones de los guiones y combinalo con las métricas generales. Dame recomendaciones accionables.
+CRITERIOS PARA ANALIZAR:
+HOOKS: ¿Arranca con pregunta, con dato, con afirmación polémica, con historia, con problema? ¿Cuáles generaron más engagement?
+ESTRUCTURAS: ¿Es tutorial paso a paso, lista, storytelling, antes/después, problema-solución, mito vs realidad? ¿Cuál funciona mejor?
+CTAS: ¿Pide guardar, comentar, compartir, seguir? ¿Cuál genera más respuesta?
+TEMAS: ¿Qué pilares o tópicos generan más guardados (interés genuino) vs más comentarios (conversación) vs más seguimientos (audiencia nueva)?
+BODY/DESARROLLO: ¿El cuerpo es específico con datos/ejemplos o genérico? ¿Largo o corto?
 
-Respondé usando EXACTAMENTE este formato de secciones (no uses JSON, usá texto plano con estos encabezados exactos):
+INSTRUCCIONES:
+- Analizá con los guiones reales que tenés — cita títulos y hooks específicos, no generalices.
+- Si hay métricas cruzadas, úsalas para validar qué estructuras/temas funcionan.
+- En "Próximos guiones" escribí el hook literal completo como arrancaría el video/post.
+- Sé directo y específico. No digas "crear contenido de valor" — decí exactamente qué estructura, qué tema, qué hook.
+
+Respondé EXACTAMENTE con este formato (texto plano, sin JSON):
 
 ##RESUMEN##
-Escribí aquí 3-4 oraciones con los hallazgos principales.
+3-4 oraciones: qué patrones dominan en los guiones, qué temas tienen más presencia, qué funciona según métricas.
 
 ##PATRONES_GANADORES##
-- PATRON: nombre del patrón | DESCRIPCION: por qué funciona | EJEMPLO: título de guión
-- PATRON: nombre del patrón | DESCRIPCION: por qué funciona | EJEMPLO: título de guión
+- PATRON: nombre del patrón | DESCRIPCION: por qué funciona, con ejemplos concretos de los guiones | EJEMPLO: cita el título o el hook real
+- PATRON: nombre del patrón | DESCRIPCION: por qué funciona, con ejemplos concretos de los guiones | EJEMPLO: cita el título o el hook real
+- PATRON: nombre del patrón | DESCRIPCION: por qué funciona, con ejemplos concretos de los guiones | EJEMPLO: cita el título o el hook real
 
 ##PATRONES_DEBILES##
-- PATRON: nombre del patrón | DESCRIPCION: por qué no funciona | EJEMPLO: título de guión
+- PATRON: nombre del patrón débil | DESCRIPCION: por qué no funciona o por qué evitarlo | EJEMPLO: cita el título o el hook real
+- PATRON: nombre del patrón débil | DESCRIPCION: por qué no funciona o por qué evitarlo | EJEMPLO: cita el título o el hook real
 
 ##GANCHOS##
-MEJOR: descripción del mejor estilo de hook
-PEOR: descripción del peor estilo
-RECOMENDACION: qué hacer
+MEJOR: describí el estilo de hook que mejor funcionó con ejemplos literales de los guiones
+PEOR: describí el estilo de hook más débil con ejemplos
+RECOMENDACION: escribí un hook de ejemplo listo para usar en el próximo guión
 
 ##CTAS##
-PATRON: descripción del patrón dominante
-RECOMENDACION: qué mejorar
+PATRON: qué CTAs aparecen y cuáles correlacionan con más guardados o comentarios
+RECOMENDACION: CTA específico recomendado y en qué momento del guión ponerlo
 
 ##RECOMENDACIONES##
-- Recomendación concreta 1
-- Recomendación concreta 2
-- Recomendación concreta 3
-- Recomendación concreta 4
+- Recomendación 1: estructura o formato concreto a replicar o evitar
+- Recomendación 2: tema o pilar a profundizar
+- Recomendación 3: ajuste de hook basado en lo que funcionó
+- Recomendación 4: mejora de CTA o cuerpo del guión
+- Recomendación 5: idea de serie o formato recurrente que tiene potencial
 
 ##PROXIMOS_GUIONES##
-- TITULO: título sugerido | TEMA: tema | ESTRUCTURA: formato | HOOK: gancho propuesto | RAZON: por qué funcionaría
-- TITULO: título sugerido | TEMA: tema | ESTRUCTURA: formato | HOOK: gancho propuesto | RAZON: por qué funcionaría
-- TITULO: título sugerido | TEMA: tema | ESTRUCTURA: formato | HOOK: gancho propuesto | RAZON: por qué funcionaría`;
+- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
+- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
+- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
+- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guración, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos
+- TITULO: título completo y específico | TEMA: pilar/tema | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: escribí la primera oración completa del guión, lista para grabar | RAZON: por qué este tema+estructura funcionaría según los datos`;
 
   // Llamar a Claude via Edge Function
   const res = await fetch(EDGE_FN, {
