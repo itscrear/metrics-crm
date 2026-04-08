@@ -533,7 +533,7 @@ function topPosts(posts) {
     <tbody>${posts.map((p,i)=>`<tr>
       <td>${i+1}</td>
       <td>${(p.description||'—').slice(0,55)}${p.description?.length>55?'…':''}</td>
-      <td>${p.post_type||'—'}</td>
+      <td>${fmtTipo(p.post_type)}</td>
       <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody></table></div></div>`;
@@ -614,7 +614,7 @@ async function loadPubs(pid) {
       <td><button class="star-btn" onclick="star('${p.id}',${p.is_star},this)">${p.is_star?'⭐':'☆'}</button></td>
       <td>${p.pub_date||'—'}</td>
       <td>${(p.description||'—').slice(0,45)}${p.description?.length>45?'…':''}</td>
-      <td>${p.post_type||'—'}</td>
+      <td>${fmtTipo(p.post_type)}</td>
       <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
       <td>${N(p.views)}</td><td>${N(p.comments)}</td><td>${N(p.shares)}</td><td>${N(p.follows)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
@@ -640,7 +640,7 @@ async function renderEstrellas() {
     <thead><tr><th>Período</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
     <tbody>${stars.map(p=>`<tr>
       <td>${p.metric_periods?.period_label||'—'}</td><td>${p.pub_date||'—'}</td>
-      <td>⭐ ${(p.description||'—').slice(0,55)}</td><td>${p.post_type||'—'}</td>
+      <td>⭐ ${(p.description||'—').slice(0,55)}</td><td>${fmtTipo(p.post_type)}</td>
       <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
@@ -762,16 +762,17 @@ function processCSV(rows) {
   const findCol = (keywords) => cols.find(c => keywords.some(k => c.toLowerCase().includes(k.toLowerCase())));
 
   const COL_ID     = findCol(['Identificador','identificador']);
-  const COL_LINK   = findCol(['Enlace','enlace','permanente']);
-  const COL_HORA   = findCol(['Hora','hora','publicaci']);
-  const COL_TIPO   = findCol(['Tipo','tipo']);
+  const COL_LINK   = findCol(['Enlace','enlace','permanente','Permalink','permalink']);
+  // 'publicaci' removido — matchea "Tipo de publicación" antes que "Hora de publicación"
+  const COL_HORA   = findCol(['Hora de publicación','Hora de publicacion','Publication time','Publish time','Post time','Hora','hora','Time published']);
+  const COL_TIPO   = findCol(['Tipo de publicación','Tipo de publicacion','Post type','Content type','Tipo','tipo']);
   const COL_DESC   = findCol(['Descripci','descripci']);
   const COL_REACH  = findCol(['Alcance','alcance']);
   const COL_VIEWS  = findCol(['Visualizaci','visualizaci']);
   const COL_LIKES  = findCol(['gusta','Me gusta']);
   const COL_SHARES = findCol(['compartió','compartio','Compartid']);
   const COL_FOLLOW = findCol(['Seguimiento','seguimiento']);
-  const COL_COMM   = findCol(['Comentario','comentario']);
+  const COL_COMM   = findCol(['Comentarios','comentarios','Comentario','comentario','Comments','comments','comment']);
   const COL_SAVES  = findCol(['guard','Guard']);
 
   console.log('[processCSV] Mapeo:', { COL_ID, COL_LINK, COL_HORA, COL_REACH, COL_VIEWS, COL_LIKES });
@@ -1539,6 +1540,13 @@ document.addEventListener('click', e => { if (e.target.classList.contains('overl
 // ═══════════════════════════════════════════
 function N(n) { if (n === null || n === undefined || n === '') return '—'; return Number(n).toLocaleString('es-AR'); }
 function fmtDate(d) { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
+function fmtTipo(tipo) {
+  if (!tipo) return '—';
+  const t = tipo.toLowerCase();
+  if (t.includes('reel')) return 'Video';
+  if (t.includes('secuencia') || t.includes('carrusel') || t.includes('carousel')) return 'Carrusel';
+  return tipo;
+}
 </script>
 </body>
 </html>
