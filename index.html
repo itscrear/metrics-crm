@@ -1308,7 +1308,7 @@ async function runIA() {
             if (firstError) blocksMsg += ` | Error en ${failed}: ${firstError}`;
           }
         }
-      } catch(e: any) {
+      } catch(e) {
         blocksMsg = `⚠️ Error de red al cargar guiones: ${e?.message}`;
         console.error('[IA blocks]', e);
       }
