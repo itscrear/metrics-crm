@@ -1262,23 +1262,31 @@ async function debugNotionPage() {
       return;
     }
 
-    resultsEl.innerHTML = `<p style="color:var(--gray-500);font-size:13px">🔍 Leyendo bloques de "${first.title}" (ID: ${first.pageId})...</p>`;
-
+    // Probar hasta 5 páginas para encontrar una con contenido
     const session = await db.auth.getSession();
     const token = session.data.session?.access_token || SB_KEY;
-    const res = await fetch(EDGE_FN, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ action: 'debug_page', pageId: first.pageId })
-    });
-    const raw = await res.text();
-    const d = JSON.parse(raw);
+    const samplesToTry = scripts.filter(s => s.pageId).slice(0, 5);
+    let d = null, first = null;
 
-    // Si hay error de Notion, mostrarlo directamente
-    if (d.error) {
-      resultsEl.innerHTML = `<div class="err">❌ Error de Notion: <strong>${d.error}</strong><br><br>pageId usado: <code>${first.pageId}</code><br>Token Notion: ${d.notionToken||'?'}</div>`;
-      return;
+    for (const candidate of samplesToTry) {
+      resultsEl.innerHTML = `<p style="color:var(--gray-500);font-size:13px">🔍 Probando "${candidate.title}"...</p>`;
+      const res = await fetch(EDGE_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ action: 'debug_page', pageId: candidate.pageId })
+      });
+      const raw = await res.text();
+      const result = JSON.parse(raw);
+      if (result.error) {
+        resultsEl.innerHTML = `<div class="err">❌ Error de Notion: <strong>${result.error}</strong><br>pageId: <code>${candidate.pageId}</code></div>`;
+        return;
+      }
+      first = candidate;
+      d = result;
+      if (result.level1?.length > 0) break; // encontró una con contenido
     }
+
+    if (!d) { resultsEl.innerHTML = '<div class="err">No se pudo obtener datos.</div>'; return; }
 
     const fmt = (arr) => (arr||[]).map(b =>
       `<tr style="border-bottom:1px solid #eee">
