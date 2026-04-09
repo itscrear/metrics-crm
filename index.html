@@ -1251,42 +1251,33 @@ async function debugNotionPage() {
       ? allScripts.filter(s => !s.upload_date || (s.upload_date >= dateFrom && s.upload_date <= dateTo))
       : allScripts;
 
-    if (!scripts.length) {
-      resultsEl.innerHTML = '<div class="err">No se encontraron guiones en Notion para este período.</div>';
-      return;
+    const withPageId = scripts.filter(s => s.pageId);
+    if (!withPageId.length) {
+      resultsEl.innerHTML = '<div class="err">Ningún guión tiene pageId.</div>'; return;
     }
 
-    const first = scripts[0];
-    if (!first.pageId) {
-      resultsEl.innerHTML = `<div class="err">El primer guión "${first.title}" no tiene pageId. Scripts tienen: ${JSON.stringify(Object.keys(first))}</div>`;
-      return;
-    }
-
-    // Probar hasta 5 páginas para encontrar una con contenido
     const session = await db.auth.getSession();
     const token = session.data.session?.access_token || SB_KEY;
-    const samplesToTry = scripts.filter(s => s.pageId).slice(0, 5);
-    let d = null, first = null;
 
-    for (const candidate of samplesToTry) {
+    // Probar hasta 5 páginas para encontrar una con bloques
+    let debugScript = null, debugData = null;
+    for (const candidate of withPageId.slice(0, 5)) {
       resultsEl.innerHTML = `<p style="color:var(--gray-500);font-size:13px">🔍 Probando "${candidate.title}"...</p>`;
       const res = await fetch(EDGE_FN, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ action: 'debug_page', pageId: candidate.pageId })
       });
-      const raw = await res.text();
-      const result = JSON.parse(raw);
+      const result = JSON.parse(await res.text());
       if (result.error) {
-        resultsEl.innerHTML = `<div class="err">❌ Error de Notion: <strong>${result.error}</strong><br>pageId: <code>${candidate.pageId}</code></div>`;
+        resultsEl.innerHTML = `<div class="err">❌ Notion: <strong>${result.error}</strong><br>pageId: <code>${candidate.pageId}</code></div>`;
         return;
       }
-      first = candidate;
-      d = result;
-      if (result.level1?.length > 0) break; // encontró una con contenido
+      debugScript = candidate;
+      debugData = result;
+      if (result.level1?.length > 0) break;
     }
-
-    if (!d) { resultsEl.innerHTML = '<div class="err">No se pudo obtener datos.</div>'; return; }
+    if (!debugData) { resultsEl.innerHTML = '<div class="err">No se pudo obtener datos.</div>'; return; }
 
     const fmt = (arr) => (arr||[]).map(b =>
       `<tr style="border-bottom:1px solid #eee">
@@ -1297,21 +1288,19 @@ async function debugNotionPage() {
     ).join('');
 
     let html = `<div style="background:white;border:1px solid #E5E7EB;border-radius:10px;padding:16px;font-size:13px">
-      <div style="font-weight:700;margin-bottom:4px">📄 "${first.title}"</div>
-      <div style="font-size:11px;color:#9CA3AF;margin-bottom:12px">pageId: <code>${first.pageId}</code> · ${d.pageTitle ? `Notion title: "${d.pageTitle}"` : ''}</div>
-      <div style="font-weight:600;margin-bottom:4px;color:#7C3AED">Nivel 1 — Bloques directos (${d.level1?.length||0}):</div>
-      ${d.level1?.length ? `<table style="width:100%;border-collapse:collapse;margin-bottom:16px">${fmt(d.level1)}</table>` : '<p style="color:#9CA3AF;margin-bottom:16px">0 bloques en nivel 1</p>'}`;
+      <div style="font-weight:700;margin-bottom:4px">📄 "${debugScript.title}"</div>
+      <div style="font-size:11px;color:#9CA3AF;margin-bottom:12px">pageId: <code>${debugScript.pageId}</code> · ${debugData.pageTitle ? `Notion: "${debugData.pageTitle}"` : ''}</div>
+      <div style="font-weight:600;margin-bottom:4px;color:#7C3AED">Nivel 1 — Bloques directos (${debugData.level1?.length||0}):</div>
+      ${debugData.level1?.length ? `<table style="width:100%;border-collapse:collapse;margin-bottom:16px">${fmt(debugData.level1)}</table>` : '<p style="color:#9CA3AF;margin-bottom:16px">⚠️ 0 bloques — página vacía o sin acceso al cuerpo</p>'}`;
 
-    if (d.level2 && Object.keys(d.level2).length) {
-      for (const [key, children] of Object.entries(d.level2)) {
+    if (debugData.level2 && Object.keys(debugData.level2).length) {
+      for (const [key, children] of Object.entries(debugData.level2)) {
         html += `<div style="font-weight:600;margin-bottom:4px;color:#0369A1">Nivel 2 — Hijos de "${key}" (${children.length}):</div>
         <table style="width:100%;border-collapse:collapse;margin-bottom:16px">${fmt(children)}</table>`;
       }
-    } else if (!d.level1?.length) {
-      html += `<div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:10px;font-size:12px">⚠️ La página no tiene bloques. Puede que el contenido esté en propiedades de la base de datos en vez del cuerpo de la página.</div>`;
     }
 
-    html += `<div style="margin-top:12px;font-size:11px;color:#9CA3AF">Total scripts en Notion: ${allScripts.length} · Con fecha: ${allScripts.filter(s=>s.upload_date).length} · Con pageId: ${allScripts.filter(s=>s.pageId).length}</div>`;
+    html += `<div style="margin-top:12px;font-size:11px;color:#9CA3AF">Total: ${allScripts.length} guiones · Con fecha: ${allScripts.filter(s=>s.upload_date).length} · Con pageId: ${allScripts.filter(s=>s.pageId).length}</div>`;
     html += '</div>';
     resultsEl.innerHTML = html;
   } catch(e) {
