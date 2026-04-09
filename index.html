@@ -1314,13 +1314,8 @@ async function runIA() {
       }
     }
 
-    // Mostrar diagnóstico en pantalla
-    if (blocksMsg) {
-      const color = blocksMsg.startsWith('✅') ? '#ECFDF5' : '#FEF3C7';
-      const border = blocksMsg.startsWith('✅') ? '#6EE7B7' : '#FCD34D';
-      document.getElementById('ia-results').innerHTML =
-        `<div style="background:${color};border:1px solid ${border};border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">${blocksMsg}</div>`;
-    }
+    // Guardar diagnóstico para mostrarlo después del render final
+    window._blocksDiag = blocksMsg || null;
 
     iaProgress(50, 'Cruzando guiones con métricas de Meta...');
 
@@ -1954,6 +1949,19 @@ function renderIAResults(a, total, crossed, notionDates, metaDates, dateFrom, da
     ${ctasHtml}
     ${proximosHtml}
     ${topPiezasHtml}`;
+
+  // Prepend blocks diagnostic banner if present
+  if (window._blocksDiag) {
+    const msg = window._blocksDiag;
+    const ok = msg.startsWith('✅');
+    const color  = ok ? '#ECFDF5' : '#FEF3C7';
+    const border = ok ? '#6EE7B7' : '#FCD34D';
+    const diagEl = document.createElement('div');
+    diagEl.style.cssText = `background:${color};border:1px solid ${border};border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;line-height:1.5`;
+    diagEl.innerHTML = msg;
+    document.getElementById('ia-results').prepend(diagEl);
+    window._blocksDiag = null;
+  }
 }
 
 // Render de análisis guardados en formato viejo (compatibilidad)
