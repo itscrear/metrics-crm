@@ -361,7 +361,7 @@ async function boot(u) {
   document.getElementById('app').style.display = 'block';
   document.getElementById('u-email').textContent = u.email.split('@')[0];
   document.getElementById('u-role').textContent = role === 'admin' ? 'Admin' : 'Editor';
-  if (role === 'admin') document.getElementById('btn-add-client').style.display = 'flex';
+  document.getElementById('btn-add-client').style.display = 'flex';
   await loadClients();
   checkAlerts();
 }
