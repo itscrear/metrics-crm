@@ -1280,14 +1280,6 @@ async function debugNotionPage() {
       return;
     }
 
-    const fmt = (arr) => arr.map(b =>
-      `<tr style="border-bottom:1px solid #eee">
-        <td style="padding:4px 8px;font-family:monospace;font-size:11px;color:#6B7280">${b.type}</td>
-        <td style="padding:4px 8px;font-size:12px">${b.text ? `<strong>${b.bold?'<b>':''}${b.text}${b.bold?'</b>':''}</strong>` : '<em style="color:#9CA3AF">vacío</em>'}</td>
-        <td style="padding:4px 8px;font-size:11px;color:#9CA3AF">${b.has_children?'⬇️ tiene hijos':''}</td>
-      </tr>`
-    ).join('');
-
     const fmt = (arr) => (arr||[]).map(b =>
       `<tr style="border-bottom:1px solid #eee">
         <td style="padding:4px 8px;font-family:monospace;font-size:11px;color:#6B7280">${b.type||'?'}</td>
