@@ -1261,19 +1261,33 @@ async function runIA() {
     iaProgress(30, `${scripts.length} guiones encontrados. Cargando contenido de páginas...`);
 
     // Traer el contenido interno de cada página de Notion (guión, referencia, copy)
-    const scriptsToFetch = scripts.slice(0, 40); // máx 40 para no tardar demasiado
+    const scriptsToFetch = scripts.slice(0, 40);
     const pageIds = scriptsToFetch.map(s => s.pageId).filter(Boolean);
-    if (pageIds.length) {
+    let blocksMsg = '';
+
+    if (!pageIds.length) {
+      blocksMsg = '⚠️ Los guiones no tienen pageId — verificá que el Edge Function esté actualizado.';
+    } else {
+      iaProgress(35, `Cargando contenido de ${pageIds.length} guiones...`);
       try {
         const blocksRes = await fetch(EDGE_FN, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_KEY}` },
           body: JSON.stringify({ action: 'notion_blocks', pageIds })
         });
-        if (blocksRes.ok) {
-          const blocksData = await blocksRes.json();
+
+        const rawBlocks = await blocksRes.text();
+        console.log('[IA blocks] status:', blocksRes.status, '| respuesta:', rawBlocks.slice(0, 300));
+
+        if (!blocksRes.ok) {
+          blocksMsg = `⚠️ Error cargando guiones: HTTP ${blocksRes.status} — ${rawBlocks.slice(0,150)}`;
+        } else {
+          const blocksData = JSON.parse(rawBlocks);
           const { contents, ok, failed, firstError } = blocksData;
-          if (contents) {
+
+          if (blocksData.error) {
+            blocksMsg = `⚠️ Edge Function: ${blocksData.error} — ¿Está desplegada la versión nueva?`;
+          } else if (contents) {
             scriptsToFetch.forEach(s => {
               const structured = s.pageId ? contents[s.pageId] : null;
               if (structured) {
@@ -1282,14 +1296,30 @@ async function runIA() {
                 if (structured.cta)    s.cta_real   = structured.cta;
               }
             });
+            const withContent = scriptsToFetch.filter(s => s.guion_text).length;
+            if (withContent === 0) {
+              // Mostrar estructura real del primer guión para diagnosticar
+              const firstId = pageIds[0];
+              const firstRaw = contents[firstId];
+              blocksMsg = `⚠️ 0 guiones con contenido. Estructura detectada en primera página: <code>${JSON.stringify(firstRaw).slice(0,200)}</code>`;
+            } else {
+              blocksMsg = `✅ ${withContent}/${pageIds.length} guiones con contenido cargado.`;
+            }
+            if (firstError) blocksMsg += ` | Error en ${failed}: ${firstError}`;
           }
-          const withContent = scriptsToFetch.filter(s => s.guion_text).length;
-          console.log(`[IA blocks] OK:${ok} FAIL:${failed} conGuion:${withContent}`);
-          if (firstError) console.warn('[IA blocks] firstError:', firstError);
         }
-      } catch(e) {
-        console.warn('[IA] No se pudo cargar contenido de bloques:', e);
+      } catch(e: any) {
+        blocksMsg = `⚠️ Error de red al cargar guiones: ${e?.message}`;
+        console.error('[IA blocks]', e);
       }
+    }
+
+    // Mostrar diagnóstico en pantalla
+    if (blocksMsg) {
+      const color = blocksMsg.startsWith('✅') ? '#ECFDF5' : '#FEF3C7';
+      const border = blocksMsg.startsWith('✅') ? '#6EE7B7' : '#FCD34D';
+      document.getElementById('ia-results').innerHTML =
+        `<div style="background:${color};border:1px solid ${border};border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">${blocksMsg}</div>`;
     }
 
     iaProgress(50, 'Cruzando guiones con métricas de Meta...');
