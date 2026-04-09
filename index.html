@@ -1278,8 +1278,8 @@ async function debugNotionPage() {
 
     if (d.level2 && Object.keys(d.level2).length) {
       for (const [key, children] of Object.entries(d.level2)) {
-        html += `<div style="font-weight:600;margin-bottom:4px;color:#0369A1">Nivel 2 — Hijos de "${key}" (${(children as any[]).length}):</div>
-        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">${fmt(children as any[])}</table>`;
+        html += `<div style="font-weight:600;margin-bottom:4px;color:#0369A1">Nivel 2 — Hijos de "${key}" (${children.length}):</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:16px">${fmt(children)}</table>`;
       }
     }
     html += '</div>';
