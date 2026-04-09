@@ -1283,7 +1283,7 @@ async function runIA() {
           blocksMsg = `⚠️ Error cargando guiones: HTTP ${blocksRes.status} — ${rawBlocks.slice(0,150)}`;
         } else {
           const blocksData = JSON.parse(rawBlocks);
-          const { contents, ok, failed, firstError } = blocksData;
+          const { contents, ok, failed, firstError, firstDebug } = blocksData;
 
           if (blocksData.error) {
             blocksMsg = `⚠️ Edge Function: ${blocksData.error} — ¿Está desplegada la versión nueva?`;
@@ -1298,10 +1298,9 @@ async function runIA() {
             });
             const withContent = scriptsToFetch.filter(s => s.guion_text).length;
             if (withContent === 0) {
-              // Mostrar estructura real del primer guión para diagnosticar
               const firstId = pageIds[0];
               const firstRaw = contents[firstId];
-              blocksMsg = `⚠️ 0 guiones con contenido. Estructura detectada en primera página: <code>${JSON.stringify(firstRaw).slice(0,200)}</code>`;
+              blocksMsg = `⚠️ 0 guiones con contenido. Debug: <code>${firstDebug||'—'}</code> · Resultado: <code>${JSON.stringify(firstRaw).slice(0,150)}</code>`;
             } else {
               blocksMsg = `✅ ${withContent}/${pageIds.length} guiones con contenido cargado.`;
             }
