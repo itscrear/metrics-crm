@@ -139,11 +139,11 @@ tr:hover td { background:var(--gray-50); }
 .ai-center { text-align:center; padding:48px 24px; }
 .ai-center h3 { font-size:20px; font-weight:700; margin-bottom:8px; }
 .ai-center p { color:var(--gray-500); font-size:14px; margin-bottom:24px; line-height:1.6; }
+/* IA legacy */
 .ai-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-top:16px; }
 .ai-card { background:white; border-radius:12px; border:1.5px solid var(--gray-200); padding:20px; }
 .ai-card-title { font-size:15px; font-weight:700; margin-bottom:12px; }
 .ai-card p { font-size:13px; color:var(--gray-700); line-height:1.6; }
-.ai-card li { font-size:13px; color:var(--gray-700); margin-bottom:6px; line-height:1.5; }
 .ai-summary { background:var(--brand-light); border-radius:12px; padding:20px; margin-bottom:20px; }
 .ai-summary p { font-size:14px; color:var(--brand-dark); line-height:1.7; }
 .tag { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; margin:2px; }
@@ -152,6 +152,38 @@ tr:hover td { background:var(--gray-50); }
 .script-list { display:flex; flex-direction:column; gap:12px; margin-top:16px; }
 .script-item { background:white; border:1.5px solid var(--gray-200); border-radius:10px; padding:14px; }
 .script-item h4 { font-size:14px; font-weight:700; margin-bottom:4px; }
+/* IA nuevo diseño */
+.ia-section { background:white; border-radius:14px; border:1.5px solid var(--gray-200); padding:24px; margin-bottom:16px; }
+.ia-section-hdr { display:flex; align-items:center; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--gray-100); padding-bottom:14px; }
+.ia-section-hdr h3 { font-size:16px; font-weight:700; margin:0; }
+.ia-section-hdr span { font-size:12px; color:var(--gray-500); }
+.ia-item { border-left:3px solid var(--gray-200); padding:10px 14px; margin-bottom:10px; border-radius:0 8px 8px 0; }
+.ia-item-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--gray-500); margin-bottom:3px; }
+.ia-item-quote { font-size:13px; font-style:italic; color:#374151; }
+.ia-item-note { font-size:12px; color:#059669; margin-top:3px; }
+.ia-highlight { border-radius:10px; padding:14px 18px; margin-top:10px; }
+.ia-highlight-green { background:#ECFDF5; border:1px solid #A7F3D0; }
+.ia-highlight-blue { background:#EFF6FF; border:1px solid #BFDBFE; }
+.ia-highlight-yellow { background:#FFFBEB; border:1px solid #FDE68A; }
+.ia-highlight-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; }
+.ia-highlight-green .ia-highlight-label { color:#059669; }
+.ia-highlight-blue .ia-highlight-label { color:#2563EB; }
+.ia-highlight-yellow .ia-highlight-label { color:#D97706; }
+.ia-highlight-text { font-size:13px; line-height:1.6; color:#111827; }
+.ia-proximo { border-radius:10px; padding:16px; margin-bottom:10px; }
+.ia-proximo-replicar { background:#F5F3FF; border:1.5px solid #DDD6FE; }
+.ia-proximo-probar { background:#FFF7ED; border:1.5px solid #FED7AA; }
+.ia-proximo-tipo { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; }
+.ia-proximo-replicar .ia-proximo-tipo { color:#7C3AED; }
+.ia-proximo-probar .ia-proximo-tipo { color:#EA580C; }
+.ia-proximo h4 { font-size:14px; font-weight:700; margin:0 0 10px; }
+.ia-proximo-hook { background:white; border-radius:6px; padding:8px 12px; font-size:13px; font-style:italic; border:1px solid rgba(0,0,0,.06); margin:8px 0; }
+.ia-proximo-razon { font-size:12px; color:#6B7280; margin-top:6px; }
+.guion-card { background:#FAFAFA; border:1px solid var(--gray-200); border-radius:10px; margin-bottom:12px; overflow:hidden; }
+.guion-card-hdr { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; cursor:pointer; }
+.guion-card-hdr:hover { background:#F3F4F6; }
+.guion-card-body { padding:0 16px 14px; display:none; white-space:pre-wrap; font-size:12px; color:#374151; line-height:1.7; font-family:monospace; }
+.guion-card-body.open { display:block; }
 .pb-wrap { background:var(--gray-200); border-radius:10px; height:6px; margin:8px 0; }
 .pb { background:var(--brand); height:6px; border-radius:10px; transition:width .4s; }
 .spinner { display:inline-block; width:18px; height:18px; border:3px solid rgba(255,255,255,.3); border-top-color:white; border-radius:50%; animation:spin .7s linear infinite; }
@@ -531,12 +563,12 @@ function K(label, val, trend='') {
 }
 function topPosts(posts) {
   return `<div class="chart-box"><div class="chart-title">🏆 Top publicaciones</div>
-    <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
+    <div class="tbl-wrap"><table><thead><tr><th>#</th><th>Descripción</th><th>Tipo</th><th>Visualiz.</th><th>Guardados</th><th>Comentarios</th><th>Alcance</th><th>Link</th></tr></thead>
     <tbody>${posts.map((p,i)=>`<tr>
       <td>${i+1}</td>
       <td>${(p.description||'—').slice(0,55)}${p.description?.length>55?'…':''}</td>
-      <td>${fmtTipo(p.post_type)}</td>
-      <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
+      <td>${fmtTipo(p.post_type, true)}</td>
+      <td>${N(p.views)}</td><td>${N(p.saves)}</td><td>${N(p.comments)}</td><td>${N(p.reach)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody></table></div></div>`;
 }
@@ -766,7 +798,7 @@ async function loadPubs(pid) {
       <td><button class="star-btn" onclick="star('${p.id}',${p.is_star},this)">${p.is_star?'⭐':'☆'}</button></td>
       <td>${p.pub_date||'—'}</td>
       <td>${(p.description||'—').slice(0,45)}${p.description?.length>45?'…':''}</td>
-      <td>${fmtTipo(p.post_type)}</td>
+      <td>${fmtTipo(p.post_type, true)}</td>
       <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
       <td>${N(p.views)}</td><td>${N(p.comments)}</td><td>${N(p.shares)}</td><td>${N(p.follows)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
@@ -792,7 +824,7 @@ async function renderEstrellas() {
     <thead><tr><th>Período</th><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Likes</th><th>Guardados</th><th>Alcance</th><th>Link</th></tr></thead>
     <tbody>${stars.map(p=>`<tr>
       <td>${p.metric_periods?.period_label||'—'}</td><td>${p.pub_date||'—'}</td>
-      <td>⭐ ${(p.description||'—').slice(0,55)}</td><td>${fmtTipo(p.post_type)}</td>
+      <td>⭐ ${(p.description||'—').slice(0,55)}</td><td>${fmtTipo(p.post_type, true)}</td>
       <td>${N(p.likes)}</td><td>${N(p.saves)}</td><td>${N(p.reach)}</td>
       <td class="lnk">${p.link?`<a href="${p.link}" target="_blank">Ver →</a>`:'—'}</td>
     </tr>`).join('')}</tbody>
@@ -1241,41 +1273,19 @@ async function runIA() {
         if (blocksRes.ok) {
           const blocksData = await blocksRes.json();
           const { contents, ok, failed, firstError } = blocksData;
-
           if (contents) {
             scriptsToFetch.forEach(s => {
-              if (s.pageId && contents[s.pageId]) {
-                const blockText = contents[s.pageId].trim();
-                if (blockText) {
-                  s.body = s.body
-                    ? `${s.body}\n${blockText}`.slice(0, 700)
-                    : blockText.slice(0, 700);
-                }
+              const structured = s.pageId ? contents[s.pageId] : null;
+              if (structured) {
+                if (structured.guion)  s.guion_text = structured.guion.slice(0, 800);
+                if (structured.hook)   s.hook_real  = structured.hook;
+                if (structured.cta)    s.cta_real   = structured.cta;
               }
             });
           }
-
-          // Mostrar diagnóstico visible en pantalla
-          const withContent = scriptsToFetch.filter(s => s.body).length;
-          let diagMsg = '';
-          if (failed > 0 && firstError) {
-            diagMsg = `<div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#92400E">
-              ⚠️ <strong>Contenido de páginas:</strong> ${ok} páginas leídas correctamente, ${failed} con error.<br>
-              Error: <code>${firstError}</code><br>
-              ${firstError?.includes('403') ? '<strong>Solución:</strong> En tu integración de Notion (notion.so/my-integrations) verificá que tenga habilitado "Read content".' : ''}
-            </div>`;
-          } else if (withContent === 0) {
-            diagMsg = `<div style="background:#F3F4F6;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#6B7280">
-              ℹ️ Las páginas de Notion no tienen contenido interno o están vacías. El análisis usará las propiedades (hook, CTA, etc.).
-            </div>`;
-          } else {
-            diagMsg = `<div style="background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#065F46">
-              ✅ <strong>Contenido cargado:</strong> ${withContent} guiones con cuerpo completo (guión, referencia, copy).
-            </div>`;
-          }
-          // Mostrar sólo si ya hay algo en ia-results, o agregar al principio
-          const iaRes = document.getElementById('ia-results');
-          iaRes.innerHTML = diagMsg + iaRes.innerHTML;
+          const withContent = scriptsToFetch.filter(s => s.guion_text).length;
+          console.log(`[IA blocks] OK:${ok} FAIL:${failed} conGuion:${withContent}`);
+          if (firstError) console.warn('[IA blocks] firstError:', firstError);
         }
       } catch(e) {
         console.warn('[IA] No se pudo cargar contenido de bloques:', e);
@@ -1352,6 +1362,13 @@ async function saveIAAnalysis(analysis, totalScripts, crossedCount, dateFrom, da
   }
 }
 
+async function delAnalysis(id) {
+  if (!confirm('¿Eliminar este análisis?')) return;
+  await db.from('ia_analyses').delete().eq('id', id);
+  window._iaHistory = (window._iaHistory||[]).filter(a => a.id !== id);
+  loadIAHistory();
+}
+
 async function loadIAHistory() {
   const el = document.getElementById('ia-history');
   if (!el) return;
@@ -1365,13 +1382,15 @@ async function loadIAHistory() {
     <h3 style="margin-bottom:12px;font-size:16px;font-weight:700">📂 Análisis anteriores</h3>
     <div style="display:flex;flex-direction:column;gap:8px">
       ${data.map(a => `
-        <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center"
-             onclick="showSavedAnalysis('${a.id}')">
-          <div>
+        <div style="background:white;border:1px solid var(--gray-200);border-radius:10px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+          <div style="cursor:pointer;flex:1" onclick="showSavedAnalysis('${a.id}')">
             <div style="font-weight:600;font-size:14px">${a.period_label}</div>
             <div style="font-size:12px;color:var(--gray-500)">${a.total_scripts} guiones · ${a.crossed_count} cruzados · ${new Date(a.created_at).toLocaleDateString('es-AR')}</div>
           </div>
-          <span style="color:var(--brand);font-size:13px">Ver →</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+            <span style="color:var(--brand);font-size:13px;cursor:pointer" onclick="showSavedAnalysis('${a.id}')">Ver →</span>
+            <button onclick="delAnalysis('${a.id}')" style="background:none;border:none;cursor:pointer;color:#9CA3AF;font-size:16px;padding:2px 4px;line-height:1" title="Eliminar análisis">🗑️</button>
+          </div>
         </div>`).join('')}
     </div>`;
   // guardar en memoria para acceso rápido
@@ -1568,118 +1587,92 @@ function parseScripts(pages) {
 }
 
 async function callClaude(scripts, crossed, allPosts, dateFrom, dateTo) {
-  // Agrupar por pilar/tema para mostrar patrones
-  const pilarCount = {};
-  scripts.forEach(s => { const p = s.pilar || s.tema || 'Sin categoría'; pilarCount[p] = (pilarCount[p]||0)+1; });
-  const pilarResumen = Object.entries(pilarCount).sort((a,b)=>b[1]-a[1]).map(([p,n])=>`${p}: ${n}`).join(' | ');
+  // Construir resumen detallado de cada guión para Claude
+  const scriptsSummary = scripts.slice(0, 50).map((s, i) => {
+    const m = s.metrics;
+    const metricsLine = m
+      ? `  📊 ${m.likes||0} likes | ${m.saves||0} guardados | ${m.comments||0} comentarios | ${m.reach||0} alcance`
+      : '';
+    const hookLine  = s.hook_real || s.hook ? `  HOOK (1ª frase negrita SLIDE 1): "${s.hook_real || s.hook}"` : '';
+    const ctaLine   = s.cta_real  || s.cta  ? `  CTA  (última frase): "${s.cta_real  || s.cta}"` : '';
+    const guionBlock = s.guion_text
+      ? `  GUIÓN:\n${s.guion_text.split('\n').map(l => '    ' + l).join('\n')}`
+      : (s.body ? `  GUIÓN (parcial): ${s.body}` : '  GUIÓN: no disponible');
+    return [
+      `[${i+1}] "${s.title}" | Formato: ${s.estructura||'?'}`,
+      hookLine, guionBlock, ctaLine, metricsLine,
+    ].filter(Boolean).join('\n');
+  }).join('\n\n────────────────\n\n');
 
-  const scriptsSummary = scripts.slice(0,60).map(s => {
-    const lines = [
-      `TÍTULO: "${s.title}"`,
-      s.pilar      ? `  Pilar: ${s.pilar}`        : null,
-      s.tema       ? `  Tema: ${s.tema}`           : null,
-      s.estructura ? `  Estructura: ${s.estructura}` : null,
-      s.hook       ? `  Hook: ${s.hook}`           : null,
-      s.cta        ? `  CTA: ${s.cta}`             : null,
-      s.body       ? `  Body: ${s.body}`           : null,
-      s.upload_date ? `  Fecha: ${s.upload_date}`  : null,
-    ].filter(Boolean);
-    return lines.join('\n');
-  }).join('\n\n');
-
-  const engRate = (p) => p.reach ? (((p.likes||0)+(p.saves||0)+(p.comments||0))/p.reach*100).toFixed(1)+'%' : '?';
-
-  const crossedSummary = crossed.length
-    ? crossed.slice(0,40).map(s => {
-        const m = s.metrics;
-        return `- "${s.title}" | Tipo:${fmtTipo(m.post_type)||'?'} | Likes:${m.likes||0} Guardados:${m.saves||0} Alcance:${m.reach||0} Views:${m.views||0} Comentarios:${m.comments||0} Seguimientos:${m.follows||0} EngRate:${engRate(m)} | Tema:${s.tema||'?'} | Formato:${s.estructura||'?'} | Hook:${s.hook||'?'} | CTA:${s.cta||'?'}`;
-      }).join('\n')
-    : 'No hay cruces exactos por fecha aún.';
-
-  // Resumen de métricas generales con breakdown por tipo
+  // Resumen de métricas generales por tipo
   let metaSummary = '';
   if (allPosts.length) {
     const avg = (arr, key) => arr.length ? Math.round(arr.reduce((a,p)=>a+(p[key]||0),0)/arr.length) : 0;
     const byType = {};
-    allPosts.forEach(p => {
-      const t = fmtTipo(p.post_type) || 'Desconocido';
-      if (!byType[t]) byType[t] = [];
-      byType[t].push(p);
-    });
+    allPosts.forEach(p => { const t = fmtTipo(p.post_type)||'Desconocido'; if (!byType[t]) byType[t]=[]; byType[t].push(p); });
     const typeBreakdown = Object.entries(byType).map(([t, ps]) =>
-      `  · ${t} (${ps.length} posts): avg likes ${avg(ps,'likes')} | avg guardados ${avg(ps,'saves')} | avg alcance ${avg(ps,'reach')} | avg comentarios ${avg(ps,'comments')}`
+      `  ${t} (${ps.length}): avg guardados ${avg(ps,'saves')} | avg comentarios ${avg(ps,'comments')} | avg alcance ${avg(ps,'reach')}`
     ).join('\n');
-
-    const sorted = [...allPosts].sort((a,b)=>(b.likes||0)-(a.likes||0));
-    const top3 = sorted.slice(0,3).map(p=>`"${(p.description||'Sin desc').slice(0,50)}" (${fmtTipo(p.post_type)||'?'}, ${p.likes||0} likes, ${p.saves||0} guardados)`).join('; ');
-
-    metaSummary = `MÉTRICAS GENERALES (${allPosts.length} publicaciones en Meta):
-- Promedio likes: ${avg(allPosts,'likes')} | Promedio guardados: ${avg(allPosts,'saves')} | Promedio alcance: ${avg(allPosts,'reach')} | Promedio comentarios: ${avg(allPosts,'comments')} | Promedio seguimientos: ${avg(allPosts,'follows')}
-BREAKDOWN POR TIPO DE CONTENIDO:
-${typeBreakdown}
-TOP 3 POSTS MÁS LIKEADOS: ${top3}`;
+    metaSummary = `\nMÉTRICAS META (${allPosts.length} posts, breakdown por tipo):\n${typeBreakdown}`;
   }
 
   const periodoLabel = (dateFrom && dateTo) ? `del ${dateFrom} al ${dateTo}` : 'sin filtro de período';
-  const prompt = `Sos estratega de contenido para la agencia ItsCrear. Tenés que analizar los guiones REALES del cliente "${client.name}" que te paso abajo (período: ${periodoLabel}).
+  const prompt = `Sos estratega de contenido para la agencia ItsCrear. Analizá los guiones REALES del cliente "${client.name}" (período: ${periodoLabel}).
 
-REGLA PRINCIPAL: Solo analizá lo que ves en los guiones. No inventes ni generalices. Si un guión tiene body completo, leelo entero. Si no tiene, usá el hook y el título. Citá frases literales de los guiones cuando des ejemplos.
+REGLA: Leé cada guión completo. No inventes ni generalices. Citá frases literales. Si el guión no está disponible, usá solo el hook y el título.
 
-PILARES presentes (${scripts.length} guiones): ${pilarResumen}
+Los guiones están organizados así en Notion:
+- HOOK = primera frase en negrita del SLIDE 1 (lo que abre el contenido)
+- GUIÓN = el desarrollo completo slide por slide
+- CTA = última frase del guión (la llamada a la acción)
 
-════════════════════════════════
-GUIONES DEL PERÍODO (leé cada uno):
-════════════════════════════════
+════════ GUIONES DEL PERÍODO (${scripts.length} piezas) ════════
 ${scriptsSummary}
-
-${crossed.length ? `════════════════════════════════
-ESTOS GUIONES TIENEN MÉTRICAS REALES (los más importantes para el análisis):
-════════════════════════════════
-${crossedSummary}` : ''}
-
 ${metaSummary}
 
-════════════════════════════════
-LO QUE NECESITO QUE HAGAS:
-════════════════════════════════
-1. Leé cada guión. Identificá su estructura real (¿cómo abre? ¿cómo desarrolla? ¿cómo cierra?).
-2. Agrupá los que se parecen. ¿Hay guiones que usan la misma fórmula? ¿Cuál funciona mejor?
-3. Mirá los hooks: ¿arrancan con pregunta, dato, afirmación polémica, historia, error común?
-4. Mirá los CTAs: ¿piden guardar, comentar, seguir? ¿Cuándo aparecen en el guión?
-5. Si hay métricas cruzadas, identificá qué estructura/tema/hook tuvo más guardados (valor real) y más comentarios (conversación).
-6. Decime exactamente qué replicar el próximo mes y qué probar por primera vez.
+════════ LO QUE TENÉS QUE HACER ════════
+Analizá ESTAS 4 DIMENSIONES ESPECÍFICAS basándote en los guiones de arriba:
 
-NO quiero: frases genéricas como "crear contenido de valor" o "conectar con la audiencia". Quiero observaciones específicas de estos guiones.
+1. HOOKS: Leé la primera frase negrita del SLIDE 1 de cada guión. Clasificá por estilo: ¿pregunta directa? ¿dato/estadística? ¿afirmación polémica? ¿descripción de un problema? ¿curiosidad? ¿historia? ¿Si las métricas lo indican, cuál genera más guardados o comentarios?
+
+2. TEMAS/DOLORES: Leé cada guión entero. ¿Qué dolor o deseo específico toca? No el formato — el problema humano real. Agrupá guiones que abordan el mismo dolor aunque tengan títulos diferentes.
+
+3. ESTRUCTURA: ¿Cómo está armado el cuerpo? ¿Lista de ítems? ¿Tutorial? ¿Antes/después? ¿Mito vs realidad? ¿Storytelling? ¿Cuál combina mejor con Carrusel vs Video?
+
+4. CTAs: Leé la última frase de cada guión. ¿Pide comentar una palabra clave? ¿Guardar? ¿Seguir? ¿Link? ¿Cuál tiene mejor resultado según métricas?
 
 Respondé EXACTAMENTE con este formato (texto plano, sin JSON, sin secciones extra):
 
 ##RESUMEN##
-2-3 oraciones concretas: qué tipo de guiones predominan, qué estructura/tema se repite más, qué señal dan las métricas.
+2-3 oraciones: qué patrones de guión dominan, qué estructura/tema se repite, qué señalan las métricas.
 
-##PATRONES_GANADORES##
-- PATRON: nombre específico | DESCRIPCION: cómo funciona esta fórmula en los guiones de este cliente, con frases literales | EJEMPLO: cita el título o una frase real del guión
-- PATRON: nombre específico | DESCRIPCION: cómo funciona esta fórmula en los guiones de este cliente, con frases literales | EJEMPLO: cita el título o una frase real del guión
-- PATRON: nombre específico | DESCRIPCION: cómo funciona esta fórmula en los guiones de este cliente, con frases literales | EJEMPLO: cita el título o una frase real del guión
+##HOOKS##
+ESTILO: [nombre del estilo] | EJEMPLO: "[frase literal del guión]" | NOTA: [observación con métricas si hay]
+ESTILO: [nombre del estilo] | EJEMPLO: "[frase literal del guión]" | NOTA: [observación con métricas si hay]
+MEJOR: [cuál estilo funciona mejor y por qué, con el hook literal que más funcionó]
+PROBAR: [hook nuevo completo listo para grabar/publicar, basado en lo que funcionó]
 
-##PATRONES_DEBILES##
-- PATRON: nombre específico | DESCRIPCION: qué no está funcionando y por qué, con ejemplo real | EJEMPLO: cita el título o una frase real
-- PATRON: nombre específico | DESCRIPCION: qué no está funcionando y por qué, con ejemplo real | EJEMPLO: cita el título o una frase real
+##TEMAS##
+DOLOR: [descripción del dolor/deseo real] | PIEZAS: [n] | INSIGHT: [qué revela sobre la audiencia] | METRICAS: [guardados/comentarios si hay]
+DOLOR: [descripción del dolor/deseo real] | PIEZAS: [n] | INSIGHT: [qué revela sobre la audiencia] | METRICAS: [guardados/comentarios si hay]
+OPORTUNIDAD: [un dolor que no se tocó y debería trabajarse el próximo mes]
 
-##GANCHOS##
-MEJOR: qué estilo de hook predomina en los guiones con mejores métricas — citá un hook literal
-PEOR: qué estilo de hook está dando menos resultado — citá un ejemplo literal
-RECOMENDACION: escribí un hook completo y listo para grabar, basado en lo que funcionó
+##ESTRUCTURA##
+FORMULA: [nombre de la fórmula] | COMO: [cómo está construido el cuerpo] | FORMATO: [Carrusel/Video/ambos] | EJEMPLO: "[título del guión]"
+FORMULA: [nombre de la fórmula] | COMO: [cómo está construido el cuerpo] | FORMATO: [Carrusel/Video/ambos] | EJEMPLO: "[título del guión]"
+REPLICAR: [cuál fórmula usar el próximo período y exactamente por qué]
 
 ##CTAS##
-PATRON: qué CTAs se usan y en qué momento del guión aparecen
-RECOMENDACION: el CTA exacto que recomendarías para el próximo mes y dónde ponerlo
+CTA: "[texto literal del CTA]" | TIPO: [keyword/guardar/seguir/link] | GUION: "[título del guión donde aparece]"
+CTA: "[texto literal del CTA]" | TIPO: [keyword/guardar/seguir/link] | GUION: "[título del guión donde aparece]"
+RECOMENDAR: [el CTA exacto para el próximo período y en qué momento del guión ponerlo]
 
-##PROXIMOS_GUIONES##
-- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
-- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
-- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
-- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica
-- TITULO: título completo | TEMA: pilar | ESTRUCTURA: Reel / Carrusel / Foto | HOOK: primera oración completa lista para grabar | RAZON: basada en qué guión o métrica de este período lo justifica`;
+##PROXIMOS##
+REPLICAR | TITULO: [título completo] | FORMATO: [Carrusel/Video] | HOOK: [primera oración completa lista para grabar] | RAZON: [qué pieza o patrón de este período lo justifica]
+REPLICAR | TITULO: [título completo] | FORMATO: [Carrusel/Video] | HOOK: [primera oración completa lista para grabar] | RAZON: [qué pieza o patrón de este período lo justifica]
+REPLICAR | TITULO: [título completo] | FORMATO: [Carrusel/Video] | HOOK: [primera oración completa lista para grabar] | RAZON: [qué pieza o patrón de este período lo justifica]
+PROBAR | TITULO: [título completo] | FORMATO: [Carrusel/Video] | HOOK: [primera oración completa lista para grabar] | RAZON: [por qué podría funcionar aunque no se haya hecho antes]
+PROBAR | TITULO: [título completo] | FORMATO: [Carrusel/Video] | HOOK: [primera oración completa lista para grabar] | RAZON: [por qué podría funcionar aunque no se haya hecho antes]`;
 
   // Llamar a Claude via Edge Function
   const res = await fetch(EDGE_FN, {
@@ -1719,116 +1712,245 @@ RECOMENDACION: el CTA exacto que recomendarías para el próximo mes y dónde po
     return m ? m[1].trim() : '';
   }
 
-  const resumen = extractSection(txt, 'RESUMEN');
-  const ganadores = extractSection(txt, 'PATRONES_GANADORES');
-  const debiles = extractSection(txt, 'PATRONES_DEBILES');
-  const ganchos = extractSection(txt, 'GANCHOS');
-  const ctas = extractSection(txt, 'CTAS');
-  const recomendaciones = extractSection(txt, 'RECOMENDACIONES') || ''; // puede no venir
-  const proximos = extractSection(txt, 'PROXIMOS_GUIONES');
+  const resumen    = extractSection(txt, 'RESUMEN');
+  const hooksBlock = extractSection(txt, 'HOOKS');
+  const temasBlock = extractSection(txt, 'TEMAS');
+  const estBlock   = extractSection(txt, 'ESTRUCTURA');
+  const ctasBlock  = extractSection(txt, 'CTAS');
+  const proxBlock  = extractSection(txt, 'PROXIMOS');
 
-  function parsePatrones(block) {
-    return block.split('\n').filter(l => l.trim().startsWith('-')).map(l => {
-      const parts = {};
-      l.replace(/^-\s*/, '').split('|').forEach(p => {
-        const [k, ...v] = p.split(':');
-        if (k && v.length) parts[k.trim().toLowerCase()] = v.join(':').trim();
-      });
-      return { patron: parts['patron']||parts['titulo']||l.slice(0,60), descripcion: parts['descripcion']||parts['razon']||'', ejemplos: parts['ejemplo'] ? [parts['ejemplo']] : [] };
-    }).filter(p => p.patron);
+  // Parser genérico de líneas con pipes
+  function parseLines(block, startKey) {
+    return block.split('\n')
+      .filter(l => l.trim().toUpperCase().startsWith(startKey))
+      .map(l => {
+        const parts = {};
+        l.split('|').forEach(p => {
+          const ci = p.indexOf(':');
+          if (ci > -1) {
+            const k = p.slice(0, ci).trim().toLowerCase().replace(/^(replicar|probar)\s*/, '');
+            const v = p.slice(ci + 1).trim();
+            if (k && v) parts[k] = v;
+          }
+        });
+        return parts;
+      }).filter(p => Object.keys(p).length > 0);
+  }
+  function keyLine(block, key) {
+    const l = block.split('\n').find(l => l.trim().toUpperCase().startsWith(key + ':'));
+    return l ? l.slice(l.indexOf(':') + 1).trim() : '';
   }
 
-  function parseProximos(block) {
-    return block.split('\n').filter(l => l.trim().startsWith('-')).map(l => {
-      const parts = {};
-      l.replace(/^-\s*/, '').split('|').forEach(p => {
-        const [k, ...v] = p.split(':');
-        if (k && v.length) parts[k.trim().toLowerCase()] = v.join(':').trim();
+  const hooks = {
+    estilos: parseLines(hooksBlock, 'ESTILO'),
+    mejor:   keyLine(hooksBlock, 'MEJOR'),
+    probar:  keyLine(hooksBlock, 'PROBAR'),
+  };
+  const temas = {
+    dolores:     parseLines(temasBlock, 'DOLOR'),
+    oportunidad: keyLine(temasBlock, 'OPORTUNIDAD'),
+  };
+  const estructura = {
+    formulas: parseLines(estBlock, 'FORMULA'),
+    replicar: keyLine(estBlock, 'REPLICAR'),
+  };
+  const ctas = {
+    lista:      parseLines(ctasBlock, 'CTA'),
+    recomendar: keyLine(ctasBlock, 'RECOMENDAR'),
+  };
+  const proximos = crossed
+    .filter(s => s.guion_text)
+    .sort((a, b) => ((b.metrics||{}).saves||0) - ((a.metrics||{}).saves||0))
+    .slice(0, 3)
+    .map(s => ({
+      title: s.title, formato: s.estructura||'—',
+      hook: s.hook_real||s.hook||'—', guion: s.guion_text||'—',
+      saves: (s.metrics||{}).saves||0, likes: (s.metrics||{}).likes||0,
+      comments: (s.metrics||{}).comments||0,
+    }));
+
+  const sugeridos = proxBlock.split('\n')
+    .filter(l => l.trim().match(/^(REPLICAR|PROBAR)/i))
+    .map(l => {
+      const tipo = l.trim().toUpperCase().startsWith('REPLICAR') ? 'replicar' : 'probar';
+      const parts = { tipo };
+      l.replace(/^(REPLICAR|PROBAR)\s*\|?\s*/i, '').split('|').forEach(p => {
+        const ci = p.indexOf(':');
+        if (ci > -1) { const k = p.slice(0,ci).trim().toLowerCase(); const v = p.slice(ci+1).trim(); if (k&&v) parts[k]=v; }
       });
-      return { titulo: parts['titulo']||'', tema: parts['tema']||'', estructura: parts['estructura']||'', hook: parts['hook']||'', razon: parts['razon']||'' };
+      return parts;
     }).filter(p => p.titulo);
-  }
-
-  function parseGanchos(block) {
-    const obj = { mejor_estilo: '', peor_estilo: '', recomendacion: '' };
-    block.split('\n').forEach(l => {
-      if (l.startsWith('MEJOR:')) obj.mejor_estilo = l.replace('MEJOR:','').trim();
-      else if (l.startsWith('PEOR:')) obj.peor_estilo = l.replace('PEOR:','').trim();
-      else if (l.startsWith('RECOMENDACION:')) obj.recomendacion = l.replace('RECOMENDACION:','').trim();
-    });
-    return obj;
-  }
-
-  function parseCtas(block) {
-    const obj = { patron_dominante: '', recomendacion: '' };
-    block.split('\n').forEach(l => {
-      if (l.startsWith('PATRON:')) obj.patron_dominante = l.replace('PATRON:','').trim();
-      else if (l.startsWith('RECOMENDACION:')) obj.recomendacion = l.replace('RECOMENDACION:','').trim();
-    });
-    return obj;
-  }
 
   return {
-    resumen_ejecutivo: resumen,
-    patrones_ganadores: parsePatrones(ganadores),
-    patrones_debiles: parsePatrones(debiles),
-    analisis_ganchos: parseGanchos(ganchos),
-    analisis_ctas: parseCtas(ctas),
-    recomendaciones: recomendaciones.split('\n').filter(l => l.trim().startsWith('-')).map(l => l.replace(/^-\s*/,'')).filter(Boolean),
-    proximos_guiones: parseProximos(proximos),
+    resumen, hooks, temas, estructura, ctas, sugeridos,
+    top_piezas: proximos,
     _dateFrom: dateFrom || null,
     _dateTo:   dateTo   || null
   };
 }
 
 function renderIAResults(a, total, crossed, notionDates, metaDates, dateFrom, dateTo, extraLabel) {
+  // Compatibilidad con análisis guardados en formato viejo
+  if (!a.hooks && (a.resumen_ejecutivo || a.patrones_ganadores)) {
+    renderIAResultsLegacy(a, total, crossed, notionDates, metaDates, dateFrom, dateTo, extraLabel);
+    return;
+  }
+
+  const periodo = (dateFrom && dateTo)
+    ? `<div style="display:inline-block;background:var(--brand-light);color:var(--brand);font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;margin-bottom:16px">📅 ${dateFrom} → ${dateTo} ${extraLabel||''}</div>`
+    : (extraLabel ? `<div style="font-size:12px;color:var(--gray-500);margin-bottom:12px">${extraLabel}</div>` : '');
+
+  const secHdr = (emoji, title, sub) => `
+    <div class="ia-section-hdr">
+      <span style="font-size:22px">${emoji}</span>
+      <h3>${title}</h3>
+      ${sub ? `<span>${sub}</span>` : ''}
+    </div>`;
+
+  // ── HOOKS ──
+  const h = a.hooks || {};
+  const hooksHtml = `<div class="ia-section">
+    ${secHdr('🎣','Hooks','Primera frase del SLIDE 1')}
+    ${(h.estilos||[]).map(e => `
+      <div class="ia-item">
+        <div class="ia-item-label">${e.estilo||'Estilo'}</div>
+        <div class="ia-item-quote">"${e.ejemplo||''}"</div>
+        ${e.nota ? `<div class="ia-item-note">→ ${e.nota}</div>` : ''}
+      </div>`).join('')}
+    ${h.mejor ? `<div class="ia-highlight ia-highlight-green"><div class="ia-highlight-label">✅ El que más funciona</div><div class="ia-highlight-text">${h.mejor}</div></div>` : ''}
+    ${h.probar ? `<div class="ia-highlight ia-highlight-blue"><div class="ia-highlight-label">💡 Hook para probar ahora</div><div class="ia-highlight-text" style="font-style:italic">"${h.probar}"</div></div>` : ''}
+  </div>`;
+
+  // ── TEMAS ──
+  const t = a.temas || {};
+  const temasHtml = `<div class="ia-section">
+    ${secHdr('💡','Temas y dolores','Qué problema toca cada guión')}
+    ${(t.dolores||[]).map(d => `
+      <div class="ia-item" style="border-left-color:#7C3AED">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="ia-item-label" style="color:#7C3AED">${d.dolor||'—'}</div>
+          ${d.piezas ? `<span style="background:#EDE9FE;color:#7C3AED;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px">${d.piezas} piezas</span>` : ''}
+        </div>
+        ${d.insight ? `<div style="font-size:13px;margin-top:4px;color:#374151">${d.insight}</div>` : ''}
+        ${d.metricas ? `<div class="ia-item-note">📊 ${d.metricas}</div>` : ''}
+      </div>`).join('')}
+    ${t.oportunidad ? `<div class="ia-highlight ia-highlight-yellow"><div class="ia-highlight-label">🚀 Oportunidad sin explorar</div><div class="ia-highlight-text">${t.oportunidad}</div></div>` : ''}
+  </div>`;
+
+  // ── ESTRUCTURA ──
+  const est = a.estructura || {};
+  const estHtml = `<div class="ia-section">
+    ${secHdr('🏗️','Estructura','Fórmula del cuerpo del guión')}
+    ${(est.formulas||[]).map(f => `
+      <div class="ia-item" style="border-left-color:#0369A1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="ia-item-label" style="color:#0369A1">${f.formula||'—'}</div>
+          ${f.formato ? `<span style="background:#E0F2FE;color:#0369A1;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px">${f.formato}</span>` : ''}
+        </div>
+        ${f.como ? `<div style="font-size:13px;margin-top:4px;color:#374151">${f.como}</div>` : ''}
+        ${f.ejemplo ? `<div style="font-size:12px;color:#6B7280;margin-top:3px">Ej: "${f.ejemplo}"</div>` : ''}
+      </div>`).join('')}
+    ${est.replicar ? `<div class="ia-highlight ia-highlight-green"><div class="ia-highlight-label">✅ Fórmula a replicar</div><div class="ia-highlight-text">${est.replicar}</div></div>` : ''}
+  </div>`;
+
+  // ── CTAs ──
+  const c = a.ctas || {};
+  const ctasHtml = `<div class="ia-section">
+    ${secHdr('📣','CTAs','Última frase del guión')}
+    ${(c.lista||[]).map(ct => `
+      <div class="ia-item" style="border-left-color:#065F46">
+        <div class="ia-item-quote">"${ct.cta||'—'}"</div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          ${ct.tipo ? `<span style="background:#D1FAE5;color:#065F46;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px">${ct.tipo}</span>` : ''}
+          ${ct.guion ? `<span style="font-size:11px;color:#9CA3AF">en: ${ct.guion}</span>` : ''}
+        </div>
+      </div>`).join('')}
+    ${c.recomendar ? `<div class="ia-highlight ia-highlight-green"><div class="ia-highlight-label">✅ CTA recomendado</div><div class="ia-highlight-text">${c.recomendar}</div></div>` : ''}
+  </div>`;
+
+  // ── PRÓXIMOS GUIONES ──
+  const sugeridos = a.sugeridos || [];
+  const replicar = sugeridos.filter(s => s.tipo === 'replicar');
+  const probar   = sugeridos.filter(s => s.tipo === 'probar');
+  const proximosHtml = `<div class="ia-section">
+    ${secHdr('🚀','Próximo período',`${replicar.length} para replicar · ${probar.length} para probar`)}
+    ${replicar.length ? `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#7C3AED;margin-bottom:10px">Replicar — lo que ya funcionó</div>
+    ${replicar.map(s => `
+      <div class="ia-proximo ia-proximo-replicar">
+        <div class="ia-proximo-tipo">Replicar</div>
+        <h4>${s.titulo||'—'}</h4>
+        ${s.formato ? `<span style="background:white;border:1px solid #DDD6FE;color:#7C3AED;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px">${s.formato}</span>` : ''}
+        ${s.hook ? `<div class="ia-proximo-hook">"${s.hook}"</div>` : ''}
+        ${s.razon ? `<div class="ia-proximo-razon">→ ${s.razon}</div>` : ''}
+      </div>`).join('')}` : ''}
+    ${probar.length ? `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#EA580C;margin:16px 0 10px">Probar — algo nuevo</div>
+    ${probar.map(s => `
+      <div class="ia-proximo ia-proximo-probar">
+        <div class="ia-proximo-tipo">Probar</div>
+        <h4>${s.titulo||'—'}</h4>
+        ${s.formato ? `<span style="background:white;border:1px solid #FED7AA;color:#EA580C;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px">${s.formato}</span>` : ''}
+        ${s.hook ? `<div class="ia-proximo-hook">"${s.hook}"</div>` : ''}
+        ${s.razon ? `<div class="ia-proximo-razon">→ ${s.razon}</div>` : ''}
+      </div>`).join('')}` : ''}
+  </div>`;
+
+  // ── TOP PIEZAS CON GUIÓN VISIBLE ──
+  const topPiezas = a.top_piezas || [];
+  const topPiezasHtml = topPiezas.length ? `<div class="ia-section">
+    ${secHdr('📄','Piezas destacadas','Guión completo de los posts con más guardados')}
+    ${topPiezas.map((p, i) => `
+      <div class="guion-card">
+        <div class="guion-card-hdr" onclick="this.nextElementSibling.classList.toggle('open')">
+          <div>
+            <div style="font-weight:600;font-size:14px">${p.title||'—'}</div>
+            <div style="font-size:12px;color:#6B7280;margin-top:2px">${fmtTipo(p.formato,true)} · ${N(p.saves)} guardados · ${N(p.likes)} likes · ${N(p.comments)} comentarios</div>
+          </div>
+          <span style="color:#7C3AED;font-size:12px">Ver guión ▼</span>
+        </div>
+        <div class="guion-card-body">${(p.guion||'').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+      </div>`).join('')}
+  </div>` : '';
+
+  document.getElementById('ia-results').innerHTML = `
+    ${periodo}
+    <div style="background:#F5F3FF;border-left:4px solid #7C3AED;padding:16px 20px;border-radius:0 10px 10px 0;margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#7C3AED;margin-bottom:6px">📋 Resumen</div>
+      <p style="font-size:14px;line-height:1.7;color:#374151;margin:0">${a.resumen||''}</p>
+    </div>
+    <div style="font-size:12px;color:#9CA3AF;margin-bottom:16px">${total} guiones analizados · ${crossed} cruzados con métricas de Meta</div>
+    ${hooksHtml}
+    ${temasHtml}
+    ${estHtml}
+    ${ctasHtml}
+    ${proximosHtml}
+    ${topPiezasHtml}`;
+}
+
+// Render de análisis guardados en formato viejo (compatibilidad)
+function renderIAResultsLegacy(a, total, crossed, notionDates, metaDates, dateFrom, dateTo, extraLabel) {
   const periodoHtml = (dateFrom && dateTo)
-    ? `<div style="background:var(--brand-light);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--brand);font-weight:600">📅 Período analizado: ${dateFrom} → ${dateTo} ${extraLabel||''}</div>`
+    ? `<div style="background:var(--brand-light);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--brand);font-weight:600">📅 ${dateFrom} → ${dateTo} ${extraLabel||''}</div>`
     : (extraLabel ? `<div style="background:var(--gray-100);border-radius:8px;padding:8px 14px;margin-bottom:12px;font-size:13px;color:var(--gray-500)">${extraLabel}</div>` : '');
-  const debugHtml = crossed === 0 && (notionDates?.length||0) > 0 ? `
-    <div style="background:#FEF3C7;border:1px solid #FCD34D;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#92400E">
-      ⚠️ <strong>0 cruces por fecha.</strong> Notion tiene ${notionDates?.length||0} fechas (ej: ${notionDates?.slice(0,2).join(', ')||'—'}).
-      Meta tiene ${metaDates?.length||0} fechas (ej: ${metaDates?.slice(0,2).join(', ')||'—'}).
-      El análisis se basó en patrones generales de guiones + métricas promedio.
-    </div>` : '';
   document.getElementById('ia-results').innerHTML = `
     ${periodoHtml}
-    ${debugHtml}
-    <div class="text-sm text-muted" style="margin-bottom:16px"><strong>${total}</strong> guiones · <strong>${crossed}</strong> cruzados con métricas</div>
-    <div class="ai-summary"><p><strong>📋 Resumen ejecutivo</strong><br><br>${a.resumen_ejecutivo||''}</p></div>
+    <div class="text-sm text-muted" style="margin-bottom:16px"><strong>${total}</strong> guiones · <strong>${crossed}</strong> cruzados</div>
+    <div class="ai-summary"><p><strong>📋 Resumen</strong><br><br>${a.resumen_ejecutivo||a.resumen||''}</p></div>
     <div class="ai-grid">
       ${aiCard('✅ Patrones ganadores', a.patrones_ganadores, 'g')}
       ${aiCard('⚠️ Patrones débiles', a.patrones_debiles, 'r')}
     </div>
-    <div class="ai-grid" style="margin-top:16px">
-      <div class="ai-card">
-        <div class="ai-card-title">🎣 Hooks</div>
-        ${a.analisis_ganchos?`<p><strong>Mejor:</strong> ${a.analisis_ganchos.mejor_estilo}</p><br><p><strong>Evitar:</strong> ${a.analisis_ganchos.peor_estilo}</p><br><p><strong>Tip:</strong> ${a.analisis_ganchos.recomendacion}</p>`:''}
-      </div>
-      <div class="ai-card">
-        <div class="ai-card-title">📣 CTAs</div>
-        ${a.analisis_ctas?`<p><strong>Patrón actual:</strong> ${a.analisis_ctas.patron_dominante}</p><br><p><strong>Mejora:</strong> ${a.analisis_ctas.recomendacion}</p>`:''}
-      </div>
-    </div>
     <div class="card" style="margin-top:16px">
-      <h3>💡 Recomendaciones</h3>
-      <ul style="padding-left:16px">${(a.recomendaciones||[]).map(r=>`<li style="margin-bottom:8px;font-size:14px">${r}</li>`).join('')}</ul>
-    </div>
-    <div class="card" style="margin-top:16px">
-      <h3>🚀 Próximos guiones sugeridos</h3>
+      <h3>🚀 Próximos guiones</h3>
       <div class="script-list">${(a.proximos_guiones||[]).map(g=>`
-        <div class="script-item">
-          <h4>${g.titulo}</h4>
-          <div><span class="tag tag-b">${g.tema||'—'}</span><span class="tag tag-y">${g.estructura||'—'}</span></div>
-          <p style="margin-top:8px"><strong>Hook:</strong> ${g.hook}</p>
-          <p style="margin-top:4px;color:var(--success)"><strong>Por qué va a funcionar:</strong> ${g.razon}</p>
-        </div>`).join('')}
+        <div class="script-item"><h4>${g.titulo}</h4>
+        <p style="margin-top:6px;font-size:13px"><strong>Hook:</strong> ${g.hook}</p>
+        <p style="margin-top:4px;font-size:12px;color:var(--gray-500)">${g.razon}</p></div>`).join('')}
       </div>
     </div>`;
 }
 
 function aiCard(title, items, color) {
-  if (!items?.length) return `<div class="ai-card"><div class="ai-card-title">${title}</div><p class="text-muted">Sin datos suficientes</p></div>`;
+  if (!items?.length) return `<div class="ai-card"><div class="ai-card-title">${title}</div><p style="color:var(--gray-500);font-size:13px">Sin datos</p></div>`;
   return `<div class="ai-card"><div class="ai-card-title">${title}</div>${items.map(item=>`
     <div style="margin-bottom:12px">
       <span class="tag tag-${color}">${item.patron}</span>
@@ -1849,12 +1971,21 @@ document.addEventListener('click', e => { if (e.target.classList.contains('overl
 // ═══════════════════════════════════════════
 function N(n) { if (n === null || n === undefined || n === '') return '—'; return Number(n).toLocaleString('es-AR'); }
 function fmtDate(d) { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
-function fmtTipo(tipo) {
-  if (!tipo) return '—';
+function fmtTipo(tipo, badge = false) {
+  if (!tipo) return badge ? '' : '—';
   const t = tipo.toLowerCase();
-  if (t.includes('reel')) return 'Video';
-  if (t.includes('secuencia') || t.includes('carrusel') || t.includes('carousel')) return 'Carrusel';
-  return tipo;
+  let label, color;
+  if (t.includes('reel') || t.includes('video')) {
+    label = 'Video'; color = '#7C3AED'; bg = '#EDE9FE';
+  } else if (t.includes('secuencia') || t.includes('carrusel') || t.includes('carousel')) {
+    label = 'Carrusel'; color = '#0369A1'; bg = '#E0F2FE';
+  } else if (t.includes('foto') || t.includes('image') || t.includes('imagen')) {
+    label = 'Foto'; color = '#065F46'; bg = '#D1FAE5';
+  } else {
+    label = tipo; color = '#6B7280'; bg = '#F3F4F6';
+  }
+  if (badge) return `<span style="background:${bg};color:${color};font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap">${label}</span>`;
+  return label;
 }
 </script>
 </body>
