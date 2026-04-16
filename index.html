@@ -250,6 +250,7 @@ tr:hover td { background:var(--gray-50); }
         <button class="tab" onclick="switchTab('publicaciones')">📱 Publicaciones</button>
         <button class="tab" onclick="switchTab('estrellas')">⭐ Estrellas</button>
         <button class="tab" onclick="switchTab('ia')" id="btn-ia" style="display:none">✨ Análisis IA</button>
+        <button class="tab" onclick="switchTab('comparativa')">⚖️ Comparar</button>
         <button class="tab" onclick="switchTab('cargar')">+ Cargar métricas</button>
       </div>
       <div class="tab-content active" id="tab-resumen"><div id="c-resumen"></div></div>
@@ -257,6 +258,7 @@ tr:hover td { background:var(--gray-50); }
       <div class="tab-content" id="tab-publicaciones"><div id="c-publicaciones"></div></div>
       <div class="tab-content" id="tab-estrellas"><div id="c-estrellas"></div></div>
       <div class="tab-content" id="tab-ia"><div id="c-ia"></div></div>
+      <div class="tab-content" id="tab-comparativa"><div id="c-comparativa"></div></div>
       <div class="tab-content" id="tab-cargar"><div id="c-cargar"></div></div>
     </div>
   </div>
@@ -410,7 +412,7 @@ async function openClient(id) {
     (role === 'admin'
       ? `<button class="btn btn-s btn-sm" onclick="openEditClient()">✏️ Editar</button>
          <button class="btn btn-d btn-sm" onclick="confirmDel()">🗑️ Eliminar</button>` : '')
-    + `<button class="btn btn-p btn-sm" onclick="exportReport()">📄 Exportar reporte</button>`;
+    + `<button class="btn btn-p btn-sm" onclick="openExportModal()">📄 Exportar reporte</button>`;
   document.getElementById('btn-ia').style.display = client.notion_database_id ? 'block' : 'none';
   // Reset tabs
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -521,6 +523,7 @@ function switchTab(name) {
   if (name === 'publicaciones') renderPublicaciones();
   if (name === 'estrellas')    renderEstrellas();
   if (name === 'ia')           renderIA();
+  if (name === 'comparativa')  renderComparativa();
   if (name === 'cargar')       renderCargar();
 }
 
@@ -576,14 +579,20 @@ function topPosts(posts) {
 // ═══════════════════════════════════════════
 // EXPORTAR REPORTE CLIENTE
 // ═══════════════════════════════════════════
-async function exportReport() {
+async function exportReport(periodId) {
   if (!client || !periods.length) {
     alert('No hay datos para exportar. Cargá métricas primero.');
     return;
   }
 
-  const last = periods[0];
-  const prev = periods[1];
+  const last = periodId ? (periods.find(p=>p.id===periodId)||periods[0]) : periods[0];
+  // "prev" = período anterior cronológicamente al seleccionado
+  const sorted = [...periods].sort((a,b)=>{
+    const da=a.period_start||a.period_label, db2=b.period_start||b.period_label;
+    return da>db2?-1:da<db2?1:0;
+  });
+  const idx = sorted.findIndex(p=>p.id===last.id);
+  const prev = sorted[idx+1] || null;
 
   // Traer posts del último período
   const { data: posts } = await db.from('posts').select('*').eq('period_id', last.id).order('likes', { ascending: false });
@@ -729,12 +738,17 @@ ${periods.length > 1 ? `
 async function renderHistorial() {
   const el = document.getElementById('c-historial');
   if (!periods.length) { el.innerHTML = '<div class="empty"><h3>Sin historial</h3></div>'; return; }
-  const rev = [...periods].reverse();
+  // Orden cronológico: más viejo primero en el gráfico, más nuevo primero en la tabla
+  const sorted = [...periods].sort((a,b) => {
+    const da = a.period_start || a.period_label;
+    const db2 = b.period_start || b.period_label;
+    return da < db2 ? -1 : da > db2 ? 1 : 0;
+  });
   el.innerHTML = `
     <div class="chart-box"><div class="chart-title">Evolución de métricas</div><canvas id="ev-chart" height="80"></canvas></div>
     <div class="tbl-wrap"><table>
       <thead><tr><th>Período</th><th>Alcance</th><th>Visualizaciones</th><th>Me gusta</th><th>Guardados</th><th>Compartidos</th><th>Seguimientos</th>${role==='admin'?'<th></th>':''}</tr></thead>
-      <tbody>${periods.map(p=>`<tr>
+      <tbody>${[...sorted].reverse().map(p=>`<tr>
         <td><strong>${p.period_label}</strong></td>
         <td>${N(p.total_reach)}</td><td>${N(p.total_views)}</td><td>${N(p.total_likes)}</td>
         <td>${N(p.total_saves)}</td><td>${N(p.total_shares)}</td><td>${N(p.total_follows)}</td>
@@ -744,11 +758,11 @@ async function renderHistorial() {
   if (chartInst) chartInst.destroy();
   const ctx = document.getElementById('ev-chart').getContext('2d');
   chartInst = new Chart(ctx, { type:'line', data:{
-    labels: rev.map(p=>p.period_label),
+    labels: sorted.map(p=>p.period_label),
     datasets:[
-      {label:'Alcance', data:rev.map(p=>p.total_reach||0), borderColor:'#7C3AED', tension:.4, fill:false},
-      {label:'Likes', data:rev.map(p=>p.total_likes||0), borderColor:'#10B981', tension:.4, fill:false},
-      {label:'Guardados', data:rev.map(p=>p.total_saves||0), borderColor:'#F59E0B', tension:.4, fill:false},
+      {label:'Alcance', data:sorted.map(p=>p.total_reach||0), borderColor:'#7C3AED', tension:.4, fill:false},
+      {label:'Likes', data:sorted.map(p=>p.total_likes||0), borderColor:'#10B981', tension:.4, fill:false},
+      {label:'Guardados', data:sorted.map(p=>p.total_saves||0), borderColor:'#F59E0B', tension:.4, fill:false},
     ]
   }, options:{responsive:true, plugins:{legend:{position:'top'}}} });
 }
@@ -2096,6 +2110,136 @@ function fmtTipo(tipo, badge = false) {
   if (badge) return `<span style="background:${bg};color:${color};font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap">${label}</span>`;
   return label;
 }
+
+// ═══════════════════════════════════════════
+// EXPORT MODAL — elegir período
+// ═══════════════════════════════════════════
+function openExportModal() {
+  if (!client || !periods.length) { alert('No hay datos para exportar.'); return; }
+  const sorted = [...periods].sort((a,b) => {
+    const da = a.period_start||a.period_label, db2 = b.period_start||b.period_label;
+    return da > db2 ? -1 : da < db2 ? 1 : 0;
+  });
+  const overlay = document.createElement('div');
+  overlay.id = 'export-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;display:flex;align-items:center;justify-content:center';
+  overlay.onclick = e => { if (e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:16px;padding:28px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+      <h3 style="font-size:18px;font-weight:800;margin-bottom:4px">📄 Exportar reporte</h3>
+      <p style="font-size:13px;color:var(--gray-500);margin-bottom:16px">Elegí el período que querés exportar</p>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;margin-bottom:20px">
+        ${sorted.map(p=>`
+        <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--gray-200);border-radius:8px;cursor:pointer">
+          <input type="radio" name="exp-period" value="${p.id}" ${p.id===sorted[0].id?'checked':''} style="accent-color:var(--brand)">
+          <div>
+            <div style="font-weight:600;font-size:14px">${p.period_label}</div>
+            <div style="font-size:12px;color:var(--gray-500)">${N(p.total_reach)} alcance · ${N(p.total_likes)} likes · ${N(p.total_saves)} guardados</div>
+          </div>
+        </label>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-p btn-full" onclick="doExport()">Exportar</button>
+        <button class="btn btn-s" onclick="document.getElementById('export-modal').remove()">Cancelar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function doExport() {
+  const sel = document.querySelector('input[name="exp-period"]:checked');
+  if (!sel) return;
+  document.getElementById('export-modal')?.remove();
+  await exportReport(sel.value);
+}
+
+// ═══════════════════════════════════════════
+// COMPARATIVA DE PERÍODOS
+// ═══════════════════════════════════════════
+function renderComparativa() {
+  const el = document.getElementById('c-comparativa');
+  if (periods.length < 2) {
+    el.innerHTML = '<div class="empty"><h3>Necesitás al menos 2 períodos cargados para comparar</h3></div>'; return;
+  }
+  const sorted = [...periods].sort((a,b) => {
+    const da = a.period_start||a.period_label, db2 = b.period_start||b.period_label;
+    return da > db2 ? -1 : da < db2 ? 1 : 0;
+  });
+  const opts  = sorted.map((p,i)=>`<option value="${p.id}" ${i===0?'selected':''}>${p.period_label}</option>`).join('');
+  const opts2 = sorted.map((p,i)=>`<option value="${p.id}" ${i===1?'selected':''}>${p.period_label}</option>`).join('');
+  el.innerHTML = `
+    <div style="background:white;border:1.5px solid var(--gray-200);border-radius:12px;padding:16px 20px;margin-bottom:20px;display:flex;flex-wrap:wrap;gap:16px;align-items:center">
+      <div style="flex:1;min-width:160px">
+        <label style="font-size:12px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:6px">PERÍODO A</label>
+        <select id="cmp-a" onchange="buildComparativa()" style="width:100%;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-weight:600">${opts}</select>
+      </div>
+      <div style="font-size:22px">⚖️</div>
+      <div style="flex:1;min-width:160px">
+        <label style="font-size:12px;font-weight:700;color:var(--gray-500);display:block;margin-bottom:6px">PERÍODO B</label>
+        <select id="cmp-b" onchange="buildComparativa()" style="width:100%;padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:14px;font-weight:600">${opts2}</select>
+      </div>
+    </div>
+    <div id="cmp-result"></div>`;
+  buildComparativa();
+}
+
+function buildComparativa() {
+  const idA = document.getElementById('cmp-a')?.value;
+  const idB = document.getElementById('cmp-b')?.value;
+  if (!idA || !idB || idA === idB) {
+    document.getElementById('cmp-result').innerHTML = '<div class="empty"><h3>Elegí dos períodos diferentes</h3></div>'; return;
+  }
+  const pA = periods.find(p=>p.id===idA);
+  const pB = periods.find(p=>p.id===idB);
+  if (!pA || !pB) return;
+
+  const metrics = [
+    { key:'total_reach',    label:'Alcance',          icon:'👥' },
+    { key:'total_views',    label:'Visualizaciones',   icon:'👁️' },
+    { key:'total_likes',    label:'Me gusta',          icon:'❤️' },
+    { key:'total_saves',    label:'Guardados',         icon:'🔖' },
+    { key:'total_shares',   label:'Compartidos',       icon:'↗️' },
+    { key:'total_comments', label:'Comentarios',       icon:'💬' },
+    { key:'total_follows',  label:'Seguimientos',      icon:'➕' },
+  ];
+
+  const rows = metrics.map(m => {
+    const vA = pA[m.key] || 0;
+    const vB = pB[m.key] || 0;
+    const diff = vA - vB;
+    const pct = vB ? ((diff/vB)*100).toFixed(1) : null;
+    const better = diff > 0, same = diff === 0;
+    const maxV = Math.max(vA, vB, 1);
+    const bar = v => `<div style="background:var(--gray-100);border-radius:4px;height:5px;margin-top:5px"><div style="background:var(--brand);height:5px;border-radius:4px;width:${Math.round(v/maxV*100)}%"></div></div>`;
+    return `
+      <tr style="border-bottom:1px solid var(--gray-100)">
+        <td style="padding:12px 16px;font-size:13px;font-weight:600;color:var(--gray-700)">${m.icon} ${m.label}</td>
+        <td style="padding:12px 16px;text-align:right"><div style="font-weight:800;font-size:15px">${N(vA)}</div>${bar(vA)}</td>
+        <td style="padding:12px 16px;text-align:right"><div style="font-weight:800;font-size:15px;color:var(--gray-500)">${N(vB)}</div>${bar(vB)}</td>
+        <td style="padding:12px 16px;text-align:center">
+          ${same
+            ? '<span style="color:var(--gray-400);font-size:13px">igual</span>'
+            : `<span style="font-size:12px;font-weight:700;color:${better?'#065F46':'#991B1B'};background:${better?'#D1FAE5':'#FEE2E2'};padding:3px 10px;border-radius:20px">${better?'▲':'▼'} ${pct!==null?Math.abs(pct)+'%':N(Math.abs(diff))}</span>`}
+        </td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('cmp-result').innerHTML = `
+    <div style="background:white;border:1.5px solid var(--gray-200);border-radius:12px;overflow:hidden">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:var(--gray-50)">
+            <th style="padding:12px 16px;text-align:left;font-size:12px;font-weight:700;color:var(--gray-500);border-bottom:2px solid var(--gray-200)">Métrica</th>
+            <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:800;color:var(--brand);border-bottom:2px solid var(--gray-200)">${pA.period_label}</th>
+            <th style="padding:12px 16px;text-align:right;font-size:13px;font-weight:700;color:var(--gray-500);border-bottom:2px solid var(--gray-200)">${pB.period_label}</th>
+            <th style="padding:12px 16px;text-align:center;font-size:12px;font-weight:700;color:var(--gray-500);border-bottom:2px solid var(--gray-200)">vs</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 </script>
 </body>
 </html>
