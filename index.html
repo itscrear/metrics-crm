@@ -787,8 +787,12 @@ async function renderPublicaciones() {
   const el = document.getElementById('c-publicaciones');
   if (!periods.length) { el.innerHTML = '<div class="empty"><h3>Sin publicaciones</h3></div>'; return; }
   if (!selPeriod) selPeriod = periods[0].id;
+  const sortedPeriods = [...periods].sort((a,b)=>{
+    const da=a.period_start||a.period_label, db2=b.period_start||b.period_label;
+    return da>db2?-1:da<db2?1:0;
+  });
   el.innerHTML = `
-    <div class="period-bar">${periods.map(p=>`
+    <div class="period-bar">${sortedPeriods.map(p=>`
       <button class="pchip ${selPeriod===p.id?'active':''}" onclick="selP('${p.id}')">${p.period_label}</button>`).join('')}
     </div>
     <div id="pubs-wrap"><div class="loading">Cargando...</div></div>`;
@@ -2196,11 +2200,9 @@ function buildComparativa() {
   const metrics = [
     { key:'total_reach',    label:'Alcance',          icon:'👥' },
     { key:'total_views',    label:'Visualizaciones',   icon:'👁️' },
-    { key:'total_likes',    label:'Me gusta',          icon:'❤️' },
+    { key:'total_comments', label:'Comentarios',       icon:'💬' },
     { key:'total_saves',    label:'Guardados',         icon:'🔖' },
     { key:'total_shares',   label:'Compartidos',       icon:'↗️' },
-    { key:'total_comments', label:'Comentarios',       icon:'💬' },
-    { key:'total_follows',  label:'Seguimientos',      icon:'➕' },
   ];
 
   const rows = metrics.map(m => {
